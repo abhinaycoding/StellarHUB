@@ -1,0 +1,229 @@
+import {
+  isConnected,
+  setAllowed,
+  getAddress,
+  getNetworkDetails,
+  signTransaction
+} from '@stellar/freighter-api';
+import * as StellarSdk from '@stellar/stellar-sdk';
+
+const HORIZON_URL = "https://horizon-testnet.stellar.org";
+const server = new StellarSdk.Horizon.Server(HORIZON_URL);
+
+export const isValidAddress = (address: string): boolean => {
+  return StellarSdk.StrKey.isValidEd25519PublicKey(address);
+};
+
+export const connectWallet = async (): Promise<string | null> => {
+  try {
+    const connectedRes = await isConnected();
+    if (!connectedRes.isConnected) {
+      throw new Error("Freighter is not installed or locked.");
+    }
+    
+    const allowedRes = await setAllowed();
+    if (allowedRes.error || !allowedRes.isAllowed) {
+      throw new Error("Access to Freighter denied.");
+    }
+
+    const addressRes = await getAddress();
+    if (addressRes.error || !addressRes.address) {
+      throw new Error("Could not retrieve address from Freighter.");
+    }
+    
+    const networkRes = await getNetworkDetails();
+    if (networkRes.network !== "TESTNET") {
+      throw new Error("Please switch your Freighter wallet to Testnet.");
+    }
+    
+    return addressRes.address;
+  } catch (error) {
+    console.error("Wallet connection error:", error);
+    throw error;
+  }
+};
+
+export const disconnectWallet = async (): Promise<void> => {
+  // Freighter doesn't have a direct disconnect method that clears permissions
+};
+
+export const getBalances = async (address: string): Promise<{ xlm: number, usdc: number }> => {
+  try {
+    const account = await server.loadAccount(address);
+    const native = account.balances.find((b: any) => b.asset_type === 'native');
+    const usdc = account.balances.find((b: any) => b.asset_code === 'USDC');
+    return {
+      xlm: native ? parseFloat(native.balance) : 0,
+      usdc: usdc ? parseFloat(usdc.balance) : 0
+    };
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return { xlm: 0, usdc: 0 };
+    }
+    throw error;
+  }
+};
+
+export const addTrustline = async (address: string, assetCode: string, issuer: string): Promise<string> => {
+  const account = await server.loadAccount(address);
+  const fee = await server.fetchBaseFee();
+  const asset = new StellarSdk.Asset(assetCode, issuer);
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  txBuilder.addOperation(StellarSdk.Operation.changeTrust({ asset }));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  const xdr = transaction.toXDR();
+  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address } as any);
+  if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
+
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
+  const response = await server.submitTransaction(signedTransaction);
+  return response.hash;
+};
+
+export const swapAssets = async (address: string, sellingAssetStr: 'XLM'|'USDC', buyingAssetStr: 'XLM'|'USDC', amount: string, issuer: string): Promise<string> => {
+  const account = await server.loadAccount(address);
+  const fee = await server.fetchBaseFee();
+  
+  const sellingAsset = sellingAssetStr === 'XLM' ? StellarSdk.Asset.native() : new StellarSdk.Asset('USDC', issuer);
+  const buyingAsset = buyingAssetStr === 'XLM' ? StellarSdk.Asset.native() : new StellarSdk.Asset('USDC', issuer);
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  
+  // Format amount to max 7 decimals to prevent StellarSdk errors
+  const formattedAmount = parseFloat(amount).toFixed(7).replace(/\.?0+$/, '');
+  
+  // PathPaymentStrictSend: We send a specific amount of sellingAsset, and get back at least '0.0000001' of buyingAsset.
+  // destMin must be strictly positive in Stellar SDK
+  txBuilder.addOperation(StellarSdk.Operation.pathPaymentStrictSend({
+    sendAsset: sellingAsset,
+    sendAmount: formattedAmount,
+    destination: address,
+    destAsset: buyingAsset,
+    destMin: "0.0000001", 
+    path: []
+  }));
+  txBuilder.setTimeout(300);
+
+  const transaction = txBuilder.build();
+  const xdr = transaction.toXDR();
+  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address } as any);
+  if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
+
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
+  const response = await server.submitTransaction(signedTransaction);
+  return response.hash;
+};
+
+export const sendPayment = async (
+  senderAddress: string, 
+  destination: string, 
+  amount: string, 
+  memo?: string
+): Promise<string> => {
+  try {
+    const account = await server.loadAccount(senderAddress);
+    const fee = await server.fetchBaseFee();
+
+    const txBuilder = new StellarSdk.TransactionBuilder(account, {
+      fee: fee.toString(),
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+    });
+
+    txBuilder.addOperation(
+      StellarSdk.Operation.payment({
+        destination,
+        asset: StellarSdk.Asset.native(),
+        amount: amount.toString(),
+      })
+    );
+
+    if (memo) {
+      txBuilder.addMemo(StellarSdk.Memo.text(memo));
+    }
+
+    txBuilder.setTimeout(300); // 5 minutes timeout
+    const transaction = txBuilder.build();
+    const xdr = transaction.toXDR();
+
+    // Pass the raw XDR string to Freighter with explicit address and network
+    const signedTxRes = await signTransaction(xdr, { 
+      network: "TESTNET",
+      networkPassphrase: StellarSdk.Networks.TESTNET,
+      address: senderAddress
+    } as any);
+
+    if (signedTxRes.error || !signedTxRes.signedTxXdr) {
+      throw new Error(signedTxRes.error?.toString() || "Transaction signing failed");
+    }
+
+    // Reconstruct and submit
+    const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(
+      signedTxRes.signedTxXdr, 
+      StellarSdk.Networks.TESTNET
+    ) as StellarSdk.Transaction; // Using Transaction specifically to avoid FeeBumpTransaction issues in submit
+    
+    const response = await server.submitTransaction(signedTransaction);
+    return response.hash;
+  } catch (error: any) {
+    console.error("Send payment error:", error);
+    throw new Error(error?.response?.data?.extras?.result_codes?.transaction || error.message || "Payment failed");
+  }
+};
+
+export interface ParsedTransaction {
+  id: string;
+  type: 'send' | 'receive';
+  amount: string;
+  address: string;
+  date: string;
+  status: string;
+  hash: string;
+}
+
+export const getTransactions = async (address: string): Promise<ParsedTransaction[]> => {
+  try {
+    const response = await server.transactions().forAccount(address).order("desc").limit(20).call();
+    const parsedTxs: ParsedTransaction[] = [];
+
+    for (const record of response.records) {
+      const ops = await record.operations();
+      for (const op of ops.records) {
+        if (op.type === 'payment' && op.asset_type === 'native') {
+          const isReceive = op.to === address;
+          
+          parsedTxs.push({
+            id: op.id,
+            type: isReceive ? 'receive' : 'send',
+            amount: `${isReceive ? '+' : '-'}${parseFloat(op.amount).toFixed(2)} XLM`,
+            address: isReceive ? op.from : op.to,
+            date: new Date(record.created_at).toLocaleString(),
+            status: record.successful ? 'Completed' : 'Failed',
+            hash: record.hash
+          });
+        }
+      }
+    }
+
+    return parsedTxs;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) return [];
+    console.error("Fetch transactions error:", error);
+    throw error;
+  }
+};
+
+export const fundTestnet = async (address: string): Promise<boolean> => {
+  try {
+    const res = await fetch(`https://friendbot.stellar.org/?addr=${encodeURIComponent(address)}`);
+    if (!res.ok) {
+      throw new Error("Friendbot failed to fund the account");
+    }
+    return true;
+  } catch (error) {
+    console.error("Fund testnet error:", error);
+    throw error;
+  }
+};
