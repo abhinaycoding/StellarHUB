@@ -1,60 +1,283 @@
-# StellarHUB
+# StellarHub
 
-![StellarHUB Banner](https://img.shields.io/badge/Stellar-Network-black?style=for-the-badge&logo=stellar)
-![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+**A developer control panel for the Stellar Testnet.**
+Trustlines, ledger state, and path payments — surfaced with the precision of a terminal, not the gloss of a consumer wallet.
 
-**StellarHUB** is a premium, decentralized web application (dApp) built on the Stellar Testnet. It provides a sleek, modern, and highly intuitive interface for interacting with the Stellar blockchain, sending assets, managing multi-asset portfolios, and natively swapping tokens via the built-in Decentralized Exchange (DEX).
+`React 18` · `TypeScript` · `Vite` · `Tailwind CSS` · `@stellar/stellar-sdk` · `@stellar/freighter-api`
 
-## ✨ Features
+---
 
-- 💼 **Multi-Asset Dashboard**: A unified portfolio view that tracks both Native XLM and custom assets (like USDC stablecoins) in real-time.
-- 💸 **Send & Receive Payments**: Seamlessly transfer funds to any Stellar address. Includes a built-in dynamic QR code generator for easy wallet addressing.
-- 🔄 **Decentralized Swap (AMM)**: A Uniswap-inspired, sleek interface to instantly swap between XLM and USDC. It leverages Stellar's native `PathPaymentStrictSend` operations and automatically manages trustlines.
-- 📜 **Live Transaction Tracking**: Real-time polling and historical view of your wallet's on-chain activity.
-- 🔐 **Freighter Wallet Integration**: Secure, non-custodial login using the official Stellar Freighter browser extension.
-- 🎨 **Premium UI/UX**: Designed with TailwindCSS, Framer Motion, and Lucide icons for a buttery-smooth dark-mode aesthetic.
+## Table of Contents
 
-## 🛠 Tech Stack
+- [Overview & Philosophy](#overview--philosophy)
+- [Tech Stack](#tech-stack)
+- [System Architecture](#system-architecture)
+- [Core Services](#core-services)
+- [Features](#features)
+- [Transaction Lifecycle](#transaction-lifecycle)
+- [UI / Design System](#ui--design-system)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Network Configuration](#network-configuration)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Frontend Framework**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [TailwindCSS](https://tailwindcss.com/)
-- **Animations**: [Framer Motion](https://www.framer.com/motion/)
-- **Blockchain SDK**: [Stellar JS SDK](https://stellar.github.io/js-stellar-sdk/) & [@stellar/freighter-api](https://docs.freighter.app/)
+---
 
-## 🚀 Getting Started
+## Overview & Philosophy
 
-### Prerequisites
-- Node.js (v16 or higher)
-- [Freighter Wallet Extension](https://www.freighter.app/) installed in your browser.
+StellarHub is a decentralized application (dApp) built on the **Stellar Testnet**. Unlike consumer-facing crypto wallets — which lean on heavy gradients, animation, and simplified UX to hide complexity — StellarHub is built as a **developer control panel**. It targets builders who care about precision: ledger state, trustlines, and network mechanics, not a friendly abstraction over them.
 
-### 1. Clone & Install
+The aesthetic reflects that intent: sharp corners, tabular monospace figures for every number, high-contrast states, and a deep ink/amber token system. It's designed to feel like a terminal — or a Bloomberg terminal for the Stellar network — rather than a fintech app.
+
+## Tech Stack
+
+| Layer | Choice | Purpose |
+|---|---|---|
+| Framework | React 18 (TypeScript) via Vite | App shell, fast HMR dev loop |
+| Styling | Tailwind CSS + custom CSS variable tokens (`index.css`) | Design system enforcement |
+| Icons | `lucide-react` | Iconography |
+| Charts | `recharts` | Portfolio performance chart |
+| Blockchain SDK | `@stellar/stellar-sdk` | Querying Horizon, building transactions, XDR |
+| Wallet | `@stellar/freighter-api` | Browser extension wallet integration & signing |
+
+## System Architecture
+
+```mermaid
+flowchart TB
+    subgraph browser["🖥️ Browser Environment"]
+        direction TB
+        subgraph app["React App — Vite + TypeScript"]
+            direction TB
+            Dashboard["Dashboard.tsx<br/>Ledger Strip • Live Log • Portfolio Chart"]
+            Swap["Swap.tsx<br/>Path Payment DEX UI"]
+            WalletCtx["WalletContext.tsx<br/>Global wallet state (address, isConnecting)"]
+            ThemeCtx["ThemeContext.tsx<br/>Ink / Slate theming"]
+            StellarSvc["services/stellar.ts<br/>Blockchain service layer"]
+        end
+        Freighter["🔐 Freighter Extension<br/>Key custody + tx signing"]
+    end
+
+    subgraph horizon["🌐 Horizon Testnet Node — horizon-testnet.stellar.org"]
+        direction TB
+        REST["REST API<br/>accounts • transactions • strictSendPaths"]
+        SSE["Streaming (SSE)<br/>operations().cursor('now').stream()"]
+    end
+
+    subgraph net["⛓️ Stellar Testnet Network"]
+        direction TB
+        Ledger["Ledger<br/>~5s deterministic close"]
+        DEX["Built-in DEX<br/>Order books across assets"]
+    end
+
+    Dashboard --> StellarSvc
+    Swap --> StellarSvc
+    Dashboard -.->|subscribes, capped at 20 items| SSE
+
+    StellarSvc -->|getBalances / getTransactions| REST
+    StellarSvc -->|strictSendPaths - multi-hop routing| REST
+    StellarSvc -->|TransactionBuilder → XDR| WalletCtx
+
+    WalletCtx <-->|sign request / signed XDR| Freighter
+    WalletCtx -->|submit signed tx| REST
+    WalletCtx -.->|blocks if not on Testnet| Freighter
+
+    REST <--> Ledger
+    REST -.->|order book queries| DEX
+    SSE -.->|live global ops| Ledger
+
+    ThemeCtx -.-> Dashboard
+    ThemeCtx -.-> Swap
+
+    classDef ui fill:#121B2E,stroke:#FFB020,stroke-width:1.5px,color:#E8EAED
+    classDef wallet fill:#0B1220,stroke:#2DD4BF,stroke-width:1.5px,color:#E8EAED
+    classDef horizonStyle fill:#0B1220,stroke:#FFB020,stroke-width:1.5px,stroke-dasharray:4 2,color:#E8EAED
+    classDef netStyle fill:#0B1220,stroke:#7C8797,stroke-width:1.5px,color:#E8EAED
+
+    class Dashboard,Swap,StellarSvc,ThemeCtx ui
+    class WalletCtx,Freighter wallet
+    class REST,SSE horizonStyle
+    class Ledger,DEX netStyle
+```
+
+A standalone copy of this diagram lives in [`system-architecture.mermaid`](./system-architecture.mermaid).
+
+**Reading the diagram:** UI components never talk to Horizon or Freighter directly — everything routes through `stellar.ts` (queries, path-finding, transaction building) and `WalletContext.tsx` (signing, submission, network-safety checks). This keeps blockchain logic out of components and testable in isolation.
+
+## Core Services
+
+### Wallet Management — `WalletContext.tsx`
+
+A React Context providing global wallet state (`address`, `isConnecting`) to the whole app.
+
+- Communicates with the **Freighter** browser extension via `@stellar/freighter-api`.
+- Includes an explicit network guard: interactions are blocked unless the connected wallet is confirmed to be on **Testnet** — protecting against accidental Mainnet or custom-network usage.
+
+### Stellar Service Layer — `src/services/stellar.ts`
+
+The heart of the blockchain integration. Initializes a connection to the public Testnet Horizon node (`https://horizon-testnet.stellar.org`) and abstracts the SDK:
+
+- **`getBalances()` / `getTransactions()`** — query the Horizon REST API for account data.
+- **`addTrustline()`** — builds a `ChangeTrust` operation. Required on Stellar because an account cannot receive a custom asset (e.g. testnet USDC) without first explicitly trusting it.
+- **Transaction signing** — every write operation follows the same path: build with `TransactionBuilder` → serialize to XDR → hand XDR to Freighter for signing → submit the signed transaction to Horizon.
+
+## Features
+
+### Dashboard (`Dashboard.tsx`)
+
+| Component | What it does |
+|---|---|
+| **Live Network Log** | Real-time stream via SSE (`server.operations().cursor('now').stream()`) of global Testnet operations. Capped at 20 items in state to avoid memory growth / UI jank under load; the connection is closed cleanly on unmount. |
+| **Ledger Strip & Pulse** | A pulsing element simulating Stellar's ~5-second ledger close cadence, alongside a horizontal strip of balances and transaction counts rendered in `tabular-nums` for perfect alignment. |
+| **Portfolio Performance Chart** | `recharts` area chart of 7-day balance history. Deliberately uses `type="step"` rather than a smooth curve — reflecting the discrete, block-by-block nature of ledger state changes rather than implying continuous movement. |
+
+### Swap / DEX Interface (`Swap.tsx`)
+
+An interface onto Stellar's built-in decentralized exchange.
+
+- **Path Payment Strict Send** — trades execute via `pathPaymentStrictSend`, not a naive swap. A debounced `useEffect` calls `server.strictSendPaths(...)` through `getOptimalPath` to query live Testnet order books and find the best multi-hop route (e.g. `XLM → AQUA → USDC`) for maximum output.
+- **Path Visualizer** — once the optimal path resolves, the UI renders the exact asset sequence the protocol will use, along with the true effective exchange rate (factoring in order-book slippage and routing).
+- **Implicit Trustline Handling** — if a user swaps into an asset they don't yet trust, `handleSwap` transparently asks Freighter to sign a `ChangeTrust` operation first, then executes the swap — no separate manual step.
+
+## Transaction Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Swap / Dashboard
+    participant Svc as stellar.ts
+    participant Ctx as WalletContext
+    participant F as Freighter
+    participant H as Horizon
+
+    U->>UI: Enter swap amount
+    UI->>Svc: strictSendPaths() [debounced]
+    Svc->>H: Query order books
+    H-->>Svc: Optimal path + rate
+    Svc-->>UI: Render Path Visualizer
+
+    U->>UI: Confirm swap
+    UI->>Svc: Check destination trustline
+    alt Trustline missing
+        Svc->>Ctx: Build ChangeTrust operation
+        Ctx->>F: Request signature (XDR)
+        F-->>Ctx: Signed XDR
+        Ctx->>H: Submit ChangeTrust tx
+        H-->>Ctx: Trustline established
+    end
+
+    Svc->>Ctx: Build pathPaymentStrictSend (XDR)
+    Ctx->>F: Request signature (XDR)
+    F-->>Ctx: Signed XDR
+    Ctx->>H: Submit signed transaction
+    H-->>Ctx: Ledger confirmation (~5s)
+    Ctx-->>UI: Update balances / tx log
+```
+
+## UI / Design System
+
+The project overrides Tailwind defaults with a custom CSS variable layer (`index.css`).
+
+**Typography**
+
+| Role | Typeface | Used for |
+|---|---|---|
+| UI chrome | Inter | Labels, buttons, navigation |
+| Data | JetBrains Mono | Balances, hashes, timestamps, operation counts |
+
+**Color tokens**
+
+| Token | Value | Role |
+|---|---|---|
+| Ink (dark bg) | `#0B1220` | Default background |
+| Panel | `#121B2E` | Cards, strips, elevated surfaces |
+| Slate 50 (light bg) | `#F8FAFC` | Light mode background |
+| Signal amber | `#FFB020` | Primary accent, active states |
+| Teal | `#2DD4BF` | Secondary / success data |
+| Text primary | `#E8EAED` | Body text on dark surfaces |
+| Text muted | `#7C8797` | Secondary/meta text |
+
+**Structural rules**
+
+- **Radii:** explicitly overridden to `0px` throughout — a deliberate sharp, rigid feel, not a default.
+- **Focus states:** strict `2px solid` outlines, not soft glowing box-shadows — accessibility without softening the aesthetic.
+- **Theming:** `ThemeContext.tsx` fully supports Dark ("Ink") and Light ("Slate 50") modes via Context + CSS variables applied at the document root.
+
+## Project Structure
+
+```
+stellarhub/
+├─ src/
+│  ├─ context/
+│  │  ├─ WalletContext.tsx      # wallet state, Freighter integration, network guard
+│  │  └─ ThemeContext.tsx       # dark/light theming
+│  ├─ services/
+│  │  └─ stellar.ts             # Horizon queries, trustlines, tx building
+│  ├─ pages/
+│  │  ├─ Dashboard.tsx          # ledger strip, live log, portfolio chart
+│  │  └─ Swap.tsx               # path payments, path visualizer
+│  ├─ components/
+│  │  ├─ LedgerStrip.tsx
+│  │  ├─ LiveNetworkLog.tsx
+│  │  ├─ PortfolioChart.tsx
+│  │  └─ PathVisualizer.tsx
+│  ├─ index.css                 # design tokens, radius/focus overrides
+│  └─ main.tsx
+├─ tailwind.config.js
+├─ vite.config.ts
+└─ package.json
+```
+
+*(Reflects the architecture described in this document; adjust to match the actual repo layout.)*
+
+## Getting Started
+
+**Prerequisites**
+
+- Node.js 18+
+- [Freighter](https://www.freighter.app/) browser extension, set to **Testnet**
+- A funded Testnet account — use [Friendbot](https://friendbot.stellar.org) to fund a new keypair
+
+**Installation**
+
 ```bash
-git clone https://github.com/abhinaycoding/StellarHUB.git
-cd StellarHUB
+git clone <repo-url>
+cd stellarhub
 npm install
 ```
 
-### 2. Seed Testnet Liquidity (Required for Swaps)
-Since this dApp runs on the Stellar Testnet, custom assets like USDC don't naturally have liquidity. We've included a script that generates a mock USDC asset and injects $10,000 of liquidity into the DEX so your swaps will always succeed.
+**Environment variables** (`.env`)
 
-```bash
-node scripts/seedLiquidity.cjs
 ```
-*Note: Once the script finishes, it will print an `Issuer Public Key`. If it differs from the one in `src/pages/Swap.tsx`, update the `USDC_ISSUER` constant in that file.*
+VITE_HORIZON_URL=https://horizon-testnet.stellar.org
+VITE_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+```
 
-### 3. Run the Development Server
+**Run the dev server**
+
 ```bash
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
 
-## 💡 How to use
+**Build for production**
 
-1. **Connect**: Click "Connect Wallet" at the top right to link your Freighter extension. Ensure Freighter is set to **Testnet**.
-2. **Fund**: If you have a 0 balance, click the "Fund Testnet Wallet" button on the Dashboard to instantly receive 10,000 test XLM via Friendbot.
-3. **Swap**: Head over to the Swap tab, enter an amount, and exchange your XLM for USDC!
+```bash
+npm run build
+```
 
-## 📜 License
-MIT License
+## Network Configuration
+
+| Setting | Value |
+|---|---|
+| Horizon endpoint | `https://horizon-testnet.stellar.org` |
+| Network passphrase | `Test SDF Network ; September 2015` |
+| Wallet | Freighter (Testnet mode required) |
+| Fund an account | [Friendbot](https://friendbot.stellar.org) |
+
+## Contributing
+
+Issues and PRs are welcome. Please keep new UI work aligned with the existing design tokens (`index.css`) rather than introducing ad-hoc colors or rounded corners — consistency is part of the product here.
+
+## License
+
+TBD — add a license file appropriate to your project (e.g. MIT).

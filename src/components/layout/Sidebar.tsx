@@ -24,20 +24,20 @@ export function Sidebar() {
     <div className="w-64 bg-surface border-r border-border hidden md:flex flex-col z-20">
       <div className="h-16 flex items-center px-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center shadow-sm">
-            <Star className="w-5 h-5 text-white fill-current" />
+          <div className="w-6 h-6 border-2 border-primary rounded-sm flex items-center justify-center bg-background">
+            <Star className="w-3.5 h-3.5 text-primary fill-current" />
           </div>
-          <span className="text-xl font-bold text-text-primary tracking-tight">
+          <span className="text-lg font-bold text-text-primary tracking-tight font-mono">
             StellarHub
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto py-6 px-3 space-y-6">
+      <div className="flex-1 overflow-y-auto py-6 space-y-8">
         <div>
-          <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+          <div className="px-6 mb-3 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
             Core
           </div>
-          <nav className="space-y-1">
+          <nav className="flex flex-col">
             {coreItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -45,14 +45,14 @@ export function Sidebar() {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors group",
+                    "flex items-center gap-3 px-6 py-2 transition-colors border-l-2",
                     isActive 
-                      ? "bg-primary/10 text-primary font-medium" 
-                      : "text-text-secondary hover:text-text-primary hover:bg-surface font-medium"
+                      ? "border-primary text-text-primary bg-background/50" 
+                      : "border-transparent text-text-secondary hover:text-text-primary hover:bg-background/30"
                   )}
                 >
-                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-text-secondary group-hover:text-text-primary")} />
-                  <span className="text-sm">{item.name}</span>
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-text-secondary")} />
+                  <span className="text-sm font-medium">{item.name}</span>
                 </Link>
               );
             })}
@@ -60,10 +60,10 @@ export function Sidebar() {
         </div>
 
         <div>
-          <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+          <div className="px-6 mb-3 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
             Actions
           </div>
-          <nav className="space-y-1">
+          <nav className="flex flex-col">
             {actionItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -71,14 +71,14 @@ export function Sidebar() {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors group",
+                    "flex items-center gap-3 px-6 py-2 transition-colors border-l-2",
                     isActive 
-                      ? "bg-primary/10 text-primary font-medium" 
-                      : "text-text-secondary hover:text-text-primary hover:bg-surface font-medium"
+                      ? "border-primary text-text-primary bg-background/50" 
+                      : "border-transparent text-text-secondary hover:text-text-primary hover:bg-background/30"
                   )}
                 >
-                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-text-secondary group-hover:text-text-primary")} />
-                  <span className="text-sm">{item.name}</span>
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-text-secondary")} />
+                  <span className="text-sm font-medium">{item.name}</span>
                 </Link>
               );
             })}
@@ -91,7 +91,7 @@ export function Sidebar() {
           href="https://developers.stellar.org/docs" 
           target="_blank" 
           rel="noreferrer"
-          className="flex items-center gap-2 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-2 rounded-md hover:bg-surface"
+          className="flex items-center justify-center gap-2 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors px-4 py-2 border border-transparent hover:border-border"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           Stellar Documentation

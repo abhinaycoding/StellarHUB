@@ -1,43 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0B0F19;
-  --color-foreground: #FFFFFF;
-  --color-surface: #111827;
-  --color-card: #1A2235;
-  --color-primary: #0F62FE;
-  --color-success: #22C55E;
+  --color-background: #0B1220;
+  --color-foreground: #E8EAED;
+  --color-surface: #121B2E;
+  --color-card: #121B2E;
+  --color-primary: #FFB020;
+  --color-success: #2DD4BF;
   --color-error: #EF4444;
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #94A3B8;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --radius-lg: 18px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
+  --color-text-primary: #E8EAED;
+  --color-text-secondary: #7C8797;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-hover: rgba(255, 255, 255, 0.2);
+  --radius-lg: 4px;
+  --radius-md: 2px;
+  --radius-sm: 0px;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 @layer base {
   .light-theme {
     --color-background: #F8FAFC;
     --color-foreground: #0F172A;
-    --color-surface: #E2E8F0;
+    --color-surface: #FFFFFF;
     --color-card: #FFFFFF;
     --color-text-primary: #0F172A;
     --color-text-secondary: #64748B;
-    --color-border: rgba(0, 0, 0, 0.08);
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-border-hover: rgba(0, 0, 0, 0.2);
   }
 
   body {
     background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* Focus states for accessibility */
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 }
 
 @layer utilities {
-  .glass {
-    background-color: rgba(26, 34, 53, 0.4);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
+  .ledger-pulse {
+    animation: pulse-amber 5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  
+  @keyframes pulse-amber {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 }

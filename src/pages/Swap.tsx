@@ -1,20 +1,43 @@
 import { useState, useEffect } from "react";
-import { ArrowDownUp, Settings2, Wallet } from "lucide-react";
+import { ArrowDownUp, Settings2, Wallet, ArrowRight } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
-import { getBalances, addTrustline, swapAssets } from "@/services/stellar";
+import { getBalances, addTrustline, swapAssets, getOptimalPath, type OptimalPath } from "@/services/stellar";
 import toast from "react-hot-toast";
 
 // The issuer we generated using our seed script
 const USDC_ISSUER = "GDXN5T3HR4CYUXP4LVGIFJKX5AUZCHUHQLTGEYNYZL73JSZTD3ASWTAB";
 
+function PathVisualizer({ optimalPath, sendingAsset, receivingAsset }: { optimalPath: OptimalPath | null, sendingAsset: string, receivingAsset: string }) {
+  if (!optimalPath) return null;
+
+  return (
+    <div className="border border-border p-4 mb-6 bg-background/50">
+      <div className="text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-4">
+        Strict Send Routing Path
+      </div>
+      <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
+        <div className="px-2 py-1 border border-border text-primary">{sendingAsset}</div>
+        {optimalPath.intermediateAssets.map((asset, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <ArrowRight className="w-4 h-4 text-text-secondary" />
+            <div className="px-2 py-1 border border-border text-text-primary">{asset}</div>
+          </div>
+        ))}
+        <ArrowRight className="w-4 h-4 text-text-secondary" />
+        <div className="px-2 py-1 border border-border text-success">{receivingAsset}</div>
+      </div>
+    </div>
+  );
+}
+
 export function Swap() {
   const { address } = useWallet();
   const [balances, setBalances] = useState({ xlm: 0, usdc: 0 });
-  
-  // Directions: true = XLM -> USDC, false = USDC -> XLM
   const [isXlmToUsdc, setIsXlmToUsdc] = useState(true);
   const [amountIn, setAmountIn] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [optimalPath, setOptimalPath] = useState<OptimalPath | null>(null);
+  const [isPathLoading, setIsPathLoading] = useState(false);
 
   const fetchBalances = async () => {
     if (address) {
@@ -31,8 +54,29 @@ export function Swap() {
     fetchBalances();
   }, [address]);
 
-  // For our simulated AMM, 1 XLM = 1 USDC
-  const amountOut = amountIn ? (parseFloat(amountIn) * 1).toFixed(2) : "";
+  useEffect(() => {
+    const fetchPath = async () => {
+      if (!amountIn || parseFloat(amountIn) <= 0) {
+        setOptimalPath(null);
+        setIsPathLoading(false);
+        return;
+      }
+      setIsPathLoading(true);
+      const sellingAssetStr = isXlmToUsdc ? 'XLM' : 'USDC';
+      const buyingAssetStr = isXlmToUsdc ? 'USDC' : 'XLM';
+      const path = await getOptimalPath(sellingAssetStr, buyingAssetStr, amountIn, USDC_ISSUER);
+      setOptimalPath(path);
+      setIsPathLoading(false);
+    };
+
+    const timer = setTimeout(() => {
+      fetchPath();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [amountIn, isXlmToUsdc]);
+
+  const amountOut = optimalPath ? optimalPath.destinationAmount : "";
 
   const handleSwap = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +84,8 @@ export function Swap() {
       toast.error("Please connect your wallet first");
       return;
     }
-    if (!amountIn || parseFloat(amountIn) <= 0) return;
+    if (!amountIn || parseFloat(amountIn) <= 0 || !optimalPath) return;
 
-    // Check balances
     const sendingAsset = isXlmToUsdc ? 'XLM' : 'USDC';
     const receivingAsset = isXlmToUsdc ? 'USDC' : 'XLM';
     const balCheck = isXlmToUsdc ? balances.xlm : balances.usdc;
@@ -56,7 +99,6 @@ export function Swap() {
     const swapToast = toast.loading("Preparing transaction...");
 
     try {
-      // Step 1: Ensure trustline exists for USDC
       if (balances.usdc === 0 && isXlmToUsdc) {
         toast.loading("Establishing USDC Trustline...", { id: swapToast });
         try {
@@ -67,9 +109,8 @@ export function Swap() {
         }
       }
 
-      // Step 2: Swap
-      toast.loading("Executing Swap via DEX...", { id: swapToast });
-      await swapAssets(address, sendingAsset, receivingAsset, amountIn, USDC_ISSUER);
+      toast.loading("Executing PathPaymentStrictSend...", { id: swapToast });
+      await swapAssets(address, sendingAsset, receivingAsset, amountIn, USDC_ISSUER, optimalPath.path);
       toast.success(`Swapped ${amountIn} ${sendingAsset} for ${amountOut} ${receivingAsset}`, { id: swapToast });
       
       setAmountIn("");
@@ -82,100 +123,113 @@ export function Swap() {
     }
   };
 
+  const sendingAsset = isXlmToUsdc ? "XLM" : "USDC";
+  const receivingAsset = isXlmToUsdc ? "USDC" : "XLM";
+
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="mb-8 flex justify-between items-end">
+    <div className="max-w-xl mx-auto space-y-6">
+      <div className="mb-6 flex justify-between items-end border-b border-border pb-4">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Swap Assets</h1>
-          <p className="text-text-secondary">Trade instantly via Stellar DEX</p>
+          <h1 className="text-xl font-bold text-text-primary mb-1 uppercase tracking-widest">Asset Swap</h1>
+          <p className="text-text-secondary text-sm">Exchange assets via strict send operations</p>
         </div>
-        <button className="p-2 text-text-secondary hover:text-text-primary transition-colors bg-surface rounded-lg border border-border">
+        <button className="p-2 text-text-secondary hover:text-text-primary transition-colors border border-transparent hover:border-border">
           <Settings2 className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="relative">
-        <form 
-          onSubmit={handleSwap}
-          className="bg-surface rounded-lg border border-border p-4 shadow-sm relative z-10"
-        >
-        {/* You Pay Section */}
-        <div className="bg-card rounded-lg p-4 border border-border mb-2">
-          <div className="flex justify-between text-sm text-text-secondary mb-2">
-            <span>You pay</span>
-            <span className="flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors" onClick={() => setAmountIn(isXlmToUsdc ? balances.xlm.toString() : balances.usdc.toString())}>
-              <Wallet className="w-3 h-3" />
-              Balance: {isXlmToUsdc ? balances.xlm.toFixed(2) : balances.usdc.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center gap-4">
-            <input 
-              type="number"
-              value={amountIn}
-              onChange={(e) => setAmountIn(e.target.value)}
-              placeholder="0.00"
-              className="bg-transparent text-3xl font-bold text-text-primary outline-none w-full placeholder:text-text-primary/20"
-              step="0.0000001"
-            />
-            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-text-primary flex items-center gap-2 shrink-0">
-              {isXlmToUsdc ? "XLM" : "USDC"}
+      <div className="bg-surface border border-border p-6 shadow-sm">
+        <form onSubmit={handleSwap}>
+          {/* You Pay Section */}
+          <div className="border border-border p-4 mb-4">
+            <div className="flex justify-between text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-4">
+              <span>Sending Asset</span>
+              <span className="cursor-pointer hover:text-text-primary flex items-center gap-1" onClick={() => setAmountIn(isXlmToUsdc ? balances.xlm.toString() : balances.usdc.toString())}>
+                <Wallet className="w-3 h-3 text-primary" />
+                AVAILABLE: <span className="font-mono text-text-primary">{isXlmToUsdc ? balances.xlm.toFixed(7) : balances.usdc.toFixed(2)}</span>
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <input 
+                type="number"
+                value={amountIn}
+                onChange={(e) => setAmountIn(e.target.value)}
+                placeholder="0.00"
+                className="bg-transparent text-2xl font-mono text-text-primary outline-none w-full placeholder:text-text-secondary/30"
+                step="0.0000001"
+              />
+              <div className="bg-background border border-border px-3 py-1 font-mono text-sm font-bold text-primary flex items-center gap-2 shrink-0">
+                {sendingAsset}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Toggle Button */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <button
-            type="button"
-            onClick={() => {
-              setIsXlmToUsdc(!isXlmToUsdc);
-              setAmountIn("");
-            }}
-            className="bg-card border border-border p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface transition-all active:scale-95"
-          >
-            <ArrowDownUp className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* You Receive Section */}
-        <div className="bg-card rounded-lg p-4 border border-border mb-6">
-          <div className="flex justify-between text-sm text-text-secondary mb-2">
-            <span>You receive (estimated)</span>
-            <span>Balance: {!isXlmToUsdc ? balances.xlm.toFixed(2) : balances.usdc.toFixed(2)}</span>
+          {/* Toggle Button */}
+          <div className="flex justify-center -my-6 relative z-10">
+            <button
+              type="button"
+              onClick={() => {
+                setIsXlmToUsdc(!isXlmToUsdc);
+                setAmountIn("");
+              }}
+              className="bg-background border border-border p-2 text-text-secondary hover:text-primary hover:border-primary transition-colors"
+            >
+              <ArrowDownUp className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex justify-between items-center gap-4">
-            <input 
-              type="text"
-              value={amountOut}
-              disabled
-              placeholder="0.00"
-              className="bg-transparent text-3xl font-bold text-text-primary outline-none w-full placeholder:text-text-primary/20 opacity-50"
-            />
-            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-text-primary flex items-center gap-2 shrink-0">
-              {!isXlmToUsdc ? "XLM" : "USDC"}
+
+          {/* You Receive Section */}
+          <div className="border border-border p-4 mb-6">
+            <div className="flex justify-between text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-4">
+              <span>Receiving Asset {isPathLoading && "(Calculating...)"}</span>
+              <span className="flex items-center gap-1">
+                AVAILABLE: <span className="font-mono text-text-primary">{!isXlmToUsdc ? balances.xlm.toFixed(7) : balances.usdc.toFixed(2)}</span>
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <input 
+                type="text"
+                value={amountOut}
+                disabled
+                placeholder="0.00"
+                className={`bg-transparent text-2xl font-mono text-text-secondary outline-none w-full placeholder:text-text-secondary/30 ${isPathLoading ? 'animate-pulse' : ''}`}
+              />
+              <div className="bg-background border border-border px-3 py-1 font-mono text-sm font-bold text-success flex items-center gap-2 shrink-0">
+                {receivingAsset}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Rate Info */}
-        <div className="flex justify-between items-center px-2 text-sm text-text-secondary mb-6">
-          <span>Exchange Rate</span>
-          <span>1 XLM = 1 USDC</span>
-        </div>
+          {/* Path Visualizer */}
+          <PathVisualizer optimalPath={optimalPath} sendingAsset={sendingAsset} receivingAsset={receivingAsset} />
 
-        <button 
-          type="submit"
-          disabled={isSubmitting || !amountIn || parseFloat(amountIn) <= 0 || !address}
-          className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-bold text-lg transition-colors disabled:opacity-50 flex justify-center"
-        >
-          {isSubmitting ? (
-            <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-          ) : !address ? (
-            "Connect Wallet"
-          ) : (
-            "Swap"
+          {/* Rate Info */}
+          {optimalPath && parseFloat(amountIn) > 0 && (
+            <div className="flex justify-between items-center text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-6 px-2">
+              <span>Effective Exchange Rate</span>
+              <span className="font-mono text-text-primary">
+                1 {sendingAsset} = {(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(6)} {receivingAsset}
+              </span>
+            </div>
           )}
-        </button>
+
+          <button 
+            type="submit"
+            disabled={isSubmitting || !amountIn || parseFloat(amountIn) <= 0 || !address || !optimalPath || isPathLoading}
+            className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 py-3 font-medium transition-colors disabled:opacity-50 flex justify-center uppercase tracking-widest text-sm"
+          >
+            {isSubmitting ? (
+              <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            ) : !address ? (
+              "Connect Wallet to Swap"
+            ) : isPathLoading ? (
+              "Finding Path..."
+            ) : !optimalPath && amountIn ? (
+              "No Path Found"
+            ) : (
+              "Submit PathPaymentStrictSend"
+            )}
+          </button>
         </form>
       </div>
     </div>

@@ -83,7 +83,50 @@ export const addTrustline = async (address: string, assetCode: string, issuer: s
   return response.hash;
 };
 
-export const swapAssets = async (address: string, sellingAssetStr: 'XLM'|'USDC', buyingAssetStr: 'XLM'|'USDC', amount: string, issuer: string): Promise<string> => {
+export interface OptimalPath {
+  path: StellarSdk.Asset[];
+  destinationAmount: string;
+  intermediateAssets: string[];
+}
+
+export const getOptimalPath = async (
+  sellingAssetStr: 'XLM'|'USDC',
+  buyingAssetStr: 'XLM'|'USDC',
+  amount: string,
+  issuer: string
+): Promise<OptimalPath | null> => {
+  const sellingAsset = sellingAssetStr === 'XLM' ? StellarSdk.Asset.native() : new StellarSdk.Asset('USDC', issuer);
+  const buyingAsset = buyingAssetStr === 'XLM' ? StellarSdk.Asset.native() : new StellarSdk.Asset('USDC', issuer);
+  const formattedAmount = parseFloat(amount).toFixed(7).replace(/\.?0+$/, '');
+
+  try {
+    const paths = await server.strictSendPaths(sellingAsset, formattedAmount, [buyingAsset]).call();
+    
+    if (paths.records.length === 0) return null;
+    
+    const bestRecord = paths.records.reduce((prev, current) => {
+      return parseFloat(current.destination_amount) > parseFloat(prev.destination_amount) ? current : prev;
+    });
+
+    const pathArray = bestRecord.path.map((a: any) => {
+      if (a.asset_type === 'native') return StellarSdk.Asset.native();
+      return new StellarSdk.Asset(a.asset_code, a.asset_issuer);
+    });
+
+    const intermediateAssets = bestRecord.path.map((a: any) => a.asset_type === 'native' ? 'XLM' : a.asset_code);
+
+    return {
+      path: pathArray,
+      destinationAmount: bestRecord.destination_amount,
+      intermediateAssets
+    };
+  } catch (error) {
+    console.error("Failed to find path:", error);
+    return null;
+  }
+};
+
+export const swapAssets = async (address: string, sellingAssetStr: 'XLM'|'USDC', buyingAssetStr: 'XLM'|'USDC', amount: string, issuer: string, path: StellarSdk.Asset[] = []): Promise<string> => {
   const account = await server.loadAccount(address);
   const fee = await server.fetchBaseFee();
   
@@ -103,7 +146,7 @@ export const swapAssets = async (address: string, sellingAssetStr: 'XLM'|'USDC',
     destination: address,
     destAsset: buyingAsset,
     destMin: "0.0000001", 
-    path: []
+    path: path
   }));
   txBuilder.setTimeout(300);
 
@@ -356,4 +399,18 @@ export const mintToken = async (
   
   const response = await server.submitTransaction(transaction);
   return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
+};
+
+export const streamNetworkOperations = (
+  onMessage: (op: any) => void,
+  onError: (err: any) => void
+): (() => void) => {
+  const closeStream = server.operations()
+    .cursor('now')
+    .stream({
+      onmessage: onMessage,
+      onerror: onError
+    });
+  
+  return closeStream;
 };
