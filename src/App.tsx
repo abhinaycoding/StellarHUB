@@ -5,12 +5,16 @@ import { Send } from "./pages/Send";
 import { Receive } from "./pages/Receive";
 import { Transactions } from "./pages/Transactions";
 import { Swap } from "./pages/Swap";
+import { Pools } from "./pages/Pools";
+import { Mint } from "./pages/Mint";
 import { Toaster } from "react-hot-toast";
 import { WalletProvider } from "./contexts/WalletContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 function App() {
   return (
-    <WalletProvider>
+    <ThemeProvider>
+      <WalletProvider>
       <Router>
         <Layout>
           <Routes>
@@ -19,6 +23,8 @@ function App() {
             <Route path="/receive" element={<Receive />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/swap" element={<Swap />} />
+            <Route path="/pools" element={<Pools />} />
+            <Route path="/mint" element={<Mint />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
@@ -34,7 +40,8 @@ function App() {
           }}
         />
       </Router>
-    </WalletProvider>
+      </WalletProvider>
+    </ThemeProvider>
   );
 }
 

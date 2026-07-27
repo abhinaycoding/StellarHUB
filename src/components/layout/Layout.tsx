@@ -4,7 +4,7 @@ import { TopNav } from "./TopNav";
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden relative z-0">
       <Sidebar />
       <div className="flex flex-col flex-1 w-full relative">
         <TopNav />

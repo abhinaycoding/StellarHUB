@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { ArrowDownUp, Settings2, Wallet } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getBalances, addTrustline, swapAssets } from "@/services/stellar";
@@ -87,25 +86,24 @@ export function Swap() {
     <div className="max-w-lg mx-auto">
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Swap Assets</h1>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">Swap Assets</h1>
           <p className="text-text-secondary">Trade instantly via Stellar DEX</p>
         </div>
-        <button className="p-2 text-text-secondary hover:text-white transition-colors bg-surface rounded-lg border border-border">
+        <button className="p-2 text-text-secondary hover:text-text-primary transition-colors bg-surface rounded-lg border border-border">
           <Settings2 className="w-5 h-5" />
         </button>
       </div>
 
-      <motion.form 
-        onSubmit={handleSwap}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-card border border-border rounded-xl p-4 shadow-2xl relative"
-      >
+      <div className="relative">
+        <form 
+          onSubmit={handleSwap}
+          className="bg-surface rounded-lg border border-border p-4 shadow-sm relative z-10"
+        >
         {/* You Pay Section */}
-        <div className="bg-surface rounded-xl p-4 border border-border mb-2">
+        <div className="bg-card rounded-lg p-4 border border-border mb-2">
           <div className="flex justify-between text-sm text-text-secondary mb-2">
             <span>You pay</span>
-            <span className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors" onClick={() => setAmountIn(isXlmToUsdc ? balances.xlm.toString() : balances.usdc.toString())}>
+            <span className="flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors" onClick={() => setAmountIn(isXlmToUsdc ? balances.xlm.toString() : balances.usdc.toString())}>
               <Wallet className="w-3 h-3" />
               Balance: {isXlmToUsdc ? balances.xlm.toFixed(2) : balances.usdc.toFixed(2)}
             </span>
@@ -116,10 +114,10 @@ export function Swap() {
               value={amountIn}
               onChange={(e) => setAmountIn(e.target.value)}
               placeholder="0.00"
-              className="bg-transparent text-3xl font-bold text-white outline-none w-full placeholder:text-white/20"
+              className="bg-transparent text-3xl font-bold text-text-primary outline-none w-full placeholder:text-text-primary/20"
               step="0.0000001"
             />
-            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-white flex items-center gap-2 shrink-0">
+            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-text-primary flex items-center gap-2 shrink-0">
               {isXlmToUsdc ? "XLM" : "USDC"}
             </div>
           </div>
@@ -133,14 +131,14 @@ export function Swap() {
               setIsXlmToUsdc(!isXlmToUsdc);
               setAmountIn("");
             }}
-            className="bg-card border border-border p-2 rounded-lg text-text-secondary hover:text-white hover:bg-surface transition-all active:scale-95"
+            className="bg-card border border-border p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface transition-all active:scale-95"
           >
             <ArrowDownUp className="w-5 h-5" />
           </button>
         </div>
 
         {/* You Receive Section */}
-        <div className="bg-surface rounded-xl p-4 border border-border mb-6">
+        <div className="bg-card rounded-lg p-4 border border-border mb-6">
           <div className="flex justify-between text-sm text-text-secondary mb-2">
             <span>You receive (estimated)</span>
             <span>Balance: {!isXlmToUsdc ? balances.xlm.toFixed(2) : balances.usdc.toFixed(2)}</span>
@@ -151,9 +149,9 @@ export function Swap() {
               value={amountOut}
               disabled
               placeholder="0.00"
-              className="bg-transparent text-3xl font-bold text-white outline-none w-full placeholder:text-white/20 opacity-50"
+              className="bg-transparent text-3xl font-bold text-text-primary outline-none w-full placeholder:text-text-primary/20 opacity-50"
             />
-            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-white flex items-center gap-2 shrink-0">
+            <div className="bg-card border border-border px-3 py-1.5 rounded-lg font-medium text-text-primary flex items-center gap-2 shrink-0">
               {!isXlmToUsdc ? "XLM" : "USDC"}
             </div>
           </div>
@@ -165,11 +163,10 @@ export function Swap() {
           <span>1 XLM = 1 USDC</span>
         </div>
 
-        {/* Submit Button */}
         <button 
           type="submit"
           disabled={isSubmitting || !amountIn || parseFloat(amountIn) <= 0 || !address}
-          className="w-full bg-white hover:bg-white/90 text-black py-4 rounded-xl font-bold text-lg transition-colors disabled:opacity-50 flex justify-center"
+          className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-bold text-lg transition-colors disabled:opacity-50 flex justify-center"
         >
           {isSubmitting ? (
             <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -179,7 +176,8 @@ export function Swap() {
             "Swap"
           )}
         </button>
-      </motion.form>
+        </form>
+      </div>
     </div>
   );
 }

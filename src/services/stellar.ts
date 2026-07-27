@@ -227,3 +227,133 @@ export const fundTestnet = async (address: string): Promise<boolean> => {
     throw error;
   }
 };
+
+export const depositLiquidity = async (address: string, maxAmountA: string, maxAmountB: string, issuer: string): Promise<string> => {
+  const account = await server.loadAccount(address);
+  const fee = await server.fetchBaseFee();
+  
+  const assetA = StellarSdk.Asset.native();
+  const assetB = new StellarSdk.Asset('USDC', issuer);
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  
+  txBuilder.addOperation(StellarSdk.Operation.liquidityPoolDeposit({
+    liquidityPoolId: StellarSdk.getLiquidityPoolId("constant_product", new StellarSdk.LiquidityPoolAsset(assetA, assetB, StellarSdk.LiquidityPoolFeeV18).getLiquidityPoolParameters()).toString("hex"),
+    maxAmountA: parseFloat(maxAmountA).toFixed(7).replace(/\.?0+$/, ''),
+    maxAmountB: parseFloat(maxAmountB).toFixed(7).replace(/\.?0+$/, ''),
+    minPrice: "0",
+    maxPrice: "1000",
+  }));
+  txBuilder.setTimeout(300);
+
+  const transaction = txBuilder.build();
+  const xdr = transaction.toXDR();
+  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address } as any);
+  if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
+
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
+  const response = await server.submitTransaction(signedTransaction);
+  return response.hash;
+};
+
+export const withdrawLiquidity = async (address: string, amountShares: string, issuer: string): Promise<string> => {
+  const account = await server.loadAccount(address);
+  const fee = await server.fetchBaseFee();
+  
+  const assetA = StellarSdk.Asset.native();
+  const assetB = new StellarSdk.Asset('USDC', issuer);
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  
+  txBuilder.addOperation(StellarSdk.Operation.liquidityPoolWithdraw({
+    liquidityPoolId: StellarSdk.getLiquidityPoolId("constant_product", new StellarSdk.LiquidityPoolAsset(assetA, assetB, StellarSdk.LiquidityPoolFeeV18).getLiquidityPoolParameters()).toString("hex"),
+    amount: parseFloat(amountShares).toFixed(7).replace(/\.?0+$/, ''),
+    minAmountA: "0",
+    minAmountB: "0"
+  }));
+  txBuilder.setTimeout(300);
+
+  const transaction = txBuilder.build();
+  const xdr = transaction.toXDR();
+  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address } as any);
+  if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
+
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
+  const response = await server.submitTransaction(signedTransaction);
+  return response.hash;
+};
+
+export const sendPathPayment = async (
+  senderAddress: string, 
+  destination: string, 
+  sendingAssetStr: 'XLM'|'USDC', 
+  amount: string, 
+  issuer: string,
+  memo?: string
+): Promise<string> => {
+  const account = await server.loadAccount(senderAddress);
+  const fee = await server.fetchBaseFee();
+  
+  const sendingAsset = sendingAssetStr === 'XLM' ? StellarSdk.Asset.native() : new StellarSdk.Asset('USDC', issuer);
+  const receivingAsset = sendingAssetStr === 'XLM' ? new StellarSdk.Asset('USDC', issuer) : StellarSdk.Asset.native();
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  
+  const formattedAmount = parseFloat(amount).toFixed(7).replace(/\.?0+$/, '');
+  
+  txBuilder.addOperation(StellarSdk.Operation.pathPaymentStrictSend({
+    sendAsset: sendingAsset,
+    sendAmount: formattedAmount,
+    destination: destination,
+    destAsset: receivingAsset,
+    destMin: "0.0000001", 
+    path: []
+  }));
+  
+  if (memo) {
+    txBuilder.addMemo(StellarSdk.Memo.text(memo));
+  }
+  txBuilder.setTimeout(300);
+
+  const transaction = txBuilder.build();
+  const xdr = transaction.toXDR();
+  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address: senderAddress } as any);
+  if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
+
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
+  const response = await server.submitTransaction(signedTransaction);
+  return response.hash;
+};
+
+export const mintToken = async (
+  distributorAddress: string,
+  tokenCode: string,
+  totalSupply: string
+): Promise<{ hash: string, issuerPk: string }> => {
+  // Create ephemeral issuer
+  const issuerKeypair = StellarSdk.Keypair.random();
+  
+  // Fund issuer with 1.5 XLM from friendbot (testnet)
+  await fundTestnet(issuerKeypair.publicKey());
+  
+  // Set up trustline from distributor to issuer
+  await addTrustline(distributorAddress, tokenCode, issuerKeypair.publicKey());
+  
+  // Send tokens from issuer to distributor
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const fee = await server.fetchBaseFee();
+  
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  txBuilder.addOperation(StellarSdk.Operation.payment({
+    destination: distributorAddress,
+    asset: new StellarSdk.Asset(tokenCode, issuerKeypair.publicKey()),
+    amount: totalSupply.toString(),
+  }));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
+};
