@@ -139,6 +139,22 @@ An interface onto Stellar's built-in decentralized exchange.
 - **Path Visualizer** — once the optimal path resolves, the UI renders the exact asset sequence the protocol will use, along with the true effective exchange rate (factoring in order-book slippage and routing).
 - **Implicit Trustline Handling** — if a user swaps into an asset they don't yet trust, `handleSwap` transparently asks Freighter to sign a `ChangeTrust` operation first, then executes the swap — no separate manual step.
 
+### Level 2 — Token Leaderboard (`TokenLeaderboard.tsx`)
+
+A real-time token holder ranking system powered by a Soroban smart contract.
+
+- **Multi-wallet Watchlist** — store, label, and track multiple Stellar addresses (saved securely in localStorage).
+- **Live Contract Events** — listens to Soroban event streams for balance changes and updates the leaderboard in real-time.
+- **Frontend Contract Calls** — interact with a deployed Soroban contract directly from the React frontend.
+- **Transaction Lifecycle Tracking** — detailed states (READY, SIGNING, SUBMITTED, CONFIRMING, SUCCESS, FAILED) for all on-chain actions.
+- **Typed Error Handling** — robust error catching converting RPC and wallet errors into clean UI messages with expandable technical details.
+
+#### Leaderboard Demo Data
+Live Demo: [ADD AFTER DEPLOYMENT]
+Token Contract: [ADD AFTER DEPLOYMENT]
+Leaderboard Contract: [ADD AFTER DEPLOYMENT]
+Contract Call Transaction: [ADD AFTER TESTNET CALL]
+
 ## Transaction Lifecycle
 
 ```mermaid
@@ -251,7 +267,29 @@ npm install
 ```
 VITE_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+VITE_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+VITE_TOKEN_CONTRACT_ID=[ADD AFTER DEPLOYMENT]
+VITE_LEADERBOARD_CONTRACT_ID=[ADD AFTER DEPLOYMENT]
 ```
+
+**Contract Build Instructions**
+
+To compile the Soroban smart contract:
+```bash
+cd contracts/token-leaderboard
+cargo build --target wasm32-unknown-unknown --release
+```
+
+**Contract Deployment Instructions**
+
+Use the Stellar CLI to deploy the contract to Testnet:
+```bash
+stellar contract deploy \
+  --wasm target/wasm32-unknown-unknown/release/token_leaderboard.wasm \
+  --source <your-testnet-account> \
+  --network testnet
+```
+Copy the returned contract ID into your `.env` file as `VITE_LEADERBOARD_CONTRACT_ID`.
 
 **Run the dev server**
 

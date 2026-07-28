@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { getBalances, getTransactions, fundTestnet, streamNetworkOperations } from "@/services/stellar";
 import { useWallet } from "@/contexts/WalletContext";
 import toast from "react-hot-toast";

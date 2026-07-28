@@ -132,7 +132,7 @@ export function Transactions() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredTransactions.map((tx, index) => (
+            {filteredTransactions.map((tx) => (
               <div 
                 key={tx.id}
                 className="p-4 sm:p-6 hover:bg-surface/50 transition-colors flex items-center justify-between group"
