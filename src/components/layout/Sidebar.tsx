@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
 
 const coreItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Token Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Swap", href: "/swap", icon: ArrowDownUp },
   { name: "Pools", href: "/pools", icon: Droplets },
 ];
