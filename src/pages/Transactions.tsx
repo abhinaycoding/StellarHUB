@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getTransactions, type ParsedTransaction } from "@/services/stellar";
 import { useWallet } from "@/contexts/WalletContext";
 
+// Displays a list of recent wallet transactions
 export function Transactions() {
   const { address } = useWallet();
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
