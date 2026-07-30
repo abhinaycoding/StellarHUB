@@ -414,3 +414,37 @@ export const streamNetworkOperations = (
   
   return closeStream;
 };
+
+export const getFeeStats = async (): Promise<StellarSdk.Horizon.FeeStatsResponse> => {
+  try {
+    const feeStats = await server.feeStats();
+    return feeStats;
+  } catch (error) {
+    console.error("Fetch fee stats error:", error);
+    throw error;
+  }
+};
+
+export const getLatestLedgers = async (limit: number = 10): Promise<StellarSdk.Horizon.ServerApi.LedgerRecord[]> => {
+  try {
+    const response = await server.ledgers().order("desc").limit(limit).call();
+    return response.records;
+  } catch (error) {
+    console.error("Fetch ledgers error:", error);
+    throw error;
+  }
+};
+
+export const streamLedgers = (
+  onMessage: (ledger: StellarSdk.Horizon.ServerApi.LedgerRecord) => void,
+  onError: (err: any) => void
+): (() => void) => {
+  const closeStream = server.ledgers()
+    .cursor('now')
+    .stream({
+      onmessage: onMessage,
+      onerror: onError
+    });
+  
+  return closeStream;
+};
