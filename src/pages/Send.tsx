@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { Send as SendIcon, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Send as SendIcon, AlertCircle, CheckCircle2, Book, X } from "lucide-react";
 import { sendPayment, sendPathPayment, isValidAddress } from "@/services/stellar";
 import { useWallet } from "@/contexts/WalletContext";
+import { useAddressBook } from "@/contexts/AddressBookContext";
 import toast from "react-hot-toast";
 
 export function Send() {
   const { address: senderAddress } = useWallet();
+  const { contacts } = useAddressBook();
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [assetToSend, setAssetToSend] = useState<'XLM' | 'USDC'>('XLM');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
 
   const USDC_ISSUER = "GDXN5T3HR4CYUXP4LVGIFJKX5AUZCHUHQLTGEYNYZL73JSZTD3ASWTAB";
 
@@ -91,15 +94,29 @@ export function Send() {
       <div className="relative">
         <form onSubmit={handleSubmit} className="space-y-6 bg-surface border border-border rounded-lg p-6 sm:p-8 relative z-10">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-secondary">Recipient Address</label>
-          <input
-            type="text"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder="G..."
-            className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-white/20 transition-colors font-mono"
-            required
-          />
+          <label className="text-sm font-medium text-text-secondary flex justify-between items-center">
+            Recipient Address
+            {contacts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsAddressBookOpen(true)}
+                className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs"
+              >
+                <Book className="w-3 h-3" />
+                Address Book
+              </button>
+            )}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              placeholder="G..."
+              className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-white/20 transition-colors font-mono"
+              required
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -163,6 +180,46 @@ export function Send() {
         </button>
         </form>
       </div>
+
+      {isAddressBookOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-surface/50">
+              <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                <Book className="w-5 h-5 text-primary" />
+                Select Contact
+              </h2>
+              <button 
+                onClick={() => setIsAddressBookOpen(false)}
+                className="p-1 hover:bg-white/10 rounded-lg text-text-secondary transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto p-2">
+              {contacts.map(contact => (
+                <button
+                  key={contact.id}
+                  type="button"
+                  onClick={() => {
+                    setDestination(contact.address);
+                    setIsAddressBookOpen(false);
+                  }}
+                  className="w-full text-left p-3 hover:bg-white/5 rounded-lg transition-colors group flex flex-col gap-1"
+                >
+                  <span className="font-medium text-text-primary group-hover:text-primary transition-colors">
+                    {contact.name}
+                  </span>
+                  <span className="text-xs font-mono text-text-secondary truncate w-full">
+                    {contact.address}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

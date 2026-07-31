@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
@@ -17,6 +17,11 @@ const actionItems = [
   { name: "Receive", href: "/receive", icon: ArrowDownToLine },
   { name: "Mint", href: "/mint", icon: Sparkles },
   { name: "Transactions", href: "/transactions", icon: Activity },
+];
+
+const preferenceItems = [
+  { name: "Address Book", href: "/address-book", icon: Book },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -67,6 +72,31 @@ export function Sidebar() {
           </div>
           <nav className="flex flex-col">
             {actionItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-6 py-2 transition-colors border-l-2",
+                    isActive 
+                      ? "border-primary text-text-primary bg-background/50" 
+                      : "border-transparent text-text-secondary hover:text-text-primary hover:bg-background/30"
+                  )}
+                >
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-text-secondary")} />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div>
+          <div className="px-6 mb-3 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+            Preferences
+          </div>
+          <nav className="flex flex-col">
+            {preferenceItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link

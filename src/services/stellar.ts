@@ -415,7 +415,7 @@ export const streamNetworkOperations = (
   return closeStream;
 };
 
-export const getFeeStats = async (): Promise<StellarSdk.Horizon.FeeStatsResponse> => {
+export const getFeeStats = async (): Promise<any> => {
   try {
     const feeStats = await server.feeStats();
     return feeStats;

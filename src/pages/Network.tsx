@@ -4,7 +4,7 @@ import { getFeeStats, getLatestLedgers, streamLedgers } from "../services/stella
 import type { Horizon } from "@stellar/stellar-sdk";
 
 export function Network() {
-  const [feeStats, setFeeStats] = useState<Horizon.FeeStatsResponse | null>(null);
+  const [feeStats, setFeeStats] = useState<any>(null);
   const [ledgers, setLedgers] = useState<Horizon.ServerApi.LedgerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export function Network() {
   };
 
   const getSurgeMultiplier = () => {
-    if (!feeStats) return 1;
+    if (!feeStats) return "1.0";
     const base = parseInt(feeStats.fee_charged.min);
     const p99 = parseInt(feeStats.fee_charged.p99);
     return (p99 / base).toFixed(1);

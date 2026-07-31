@@ -9,42 +9,52 @@ import { Pools } from "./pages/Pools";
 import { Mint } from "./pages/Mint";
 import { Network } from "./pages/Network";
 import { TokenLeaderboard } from "./pages/TokenLeaderboard";
+import { AddressBook } from "./pages/AddressBook";
+import { Settings } from "./pages/Settings";
 import { Toaster } from "react-hot-toast";
 import { WalletProvider } from "./contexts/WalletContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { SettingsProvider } from "./contexts/SettingsContext";
+import { AddressBookProvider } from "./contexts/AddressBookContext";
 
 function App() {
   return (
     <ThemeProvider>
-      <WalletProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/send" element={<Send />} />
-            <Route path="/receive" element={<Receive />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/swap" element={<Swap />} />
-            <Route path="/pools" element={<Pools />} />
-            <Route path="/mint" element={<Mint />} />
-            <Route path="/network" element={<Network />} />
-            <Route path="/leaderboard" element={<TokenLeaderboard />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
-        <Toaster 
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: '#1C1C1E',
-              color: '#FAFAFA',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-              borderRadius: '12px',
-            }
-          }}
-        />
-      </Router>
-      </WalletProvider>
+      <SettingsProvider>
+        <AddressBookProvider>
+          <WalletProvider>
+            <Router>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/send" element={<Send />} />
+                  <Route path="/receive" element={<Receive />} />
+                  <Route path="/transactions" element={<Transactions />} />
+                  <Route path="/swap" element={<Swap />} />
+                  <Route path="/pools" element={<Pools />} />
+                  <Route path="/mint" element={<Mint />} />
+                  <Route path="/network" element={<Network />} />
+                  <Route path="/leaderboard" element={<TokenLeaderboard />} />
+                  <Route path="/address-book" element={<AddressBook />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Layout>
+              <Toaster 
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: '#1C1C1E',
+                    color: '#FAFAFA',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: '12px',
+                  }
+                }}
+              />
+            </Router>
+          </WalletProvider>
+        </AddressBookProvider>
+      </SettingsProvider>
     </ThemeProvider>
   );
 }
