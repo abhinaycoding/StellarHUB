@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
@@ -15,7 +15,8 @@ const coreItems = [
 const actionItems = [
   { name: "Send", href: "/send", icon: Send },
   { name: "Receive", href: "/receive", icon: ArrowDownToLine },
-  { name: "Mint", href: "/mint", icon: Sparkles },
+  { name: "NFTs", href: "/nfts", icon: ImageIcon },
+  { name: "Mint Tokens", href: "/mint", icon: Sparkles },
   { name: "Transactions", href: "/transactions", icon: Activity },
 ];
 

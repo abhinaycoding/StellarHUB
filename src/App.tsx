@@ -7,6 +7,7 @@ import { Transactions } from "./pages/Transactions";
 import { Swap } from "./pages/Swap";
 import { Pools } from "./pages/Pools";
 import { Mint } from "./pages/Mint";
+import { NFTs } from "./pages/NFTs";
 import { Network } from "./pages/Network";
 import { TokenLeaderboard } from "./pages/TokenLeaderboard";
 import { AddressBook } from "./pages/AddressBook";
@@ -33,6 +34,7 @@ function App() {
                   <Route path="/swap" element={<Swap />} />
                   <Route path="/pools" element={<Pools />} />
                   <Route path="/mint" element={<Mint />} />
+                  <Route path="/nfts" element={<NFTs />} />
                   <Route path="/network" element={<Network />} />
                   <Route path="/leaderboard" element={<TokenLeaderboard />} />
                   <Route path="/address-book" element={<AddressBook />} />

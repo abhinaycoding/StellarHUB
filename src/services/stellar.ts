@@ -448,3 +448,83 @@ export const streamLedgers = (
   
   return closeStream;
 };
+
+export interface NFTData {
+  assetCode: string;
+  issuer: string;
+  imageUrl: string;
+  balance: string;
+}
+
+export const getUserNFTs = async (address: string): Promise<NFTData[]> => {
+  try {
+    const account = await server.loadAccount(address);
+    const nfts: NFTData[] = [];
+    
+    for (const balance of account.balances) {
+      if (balance.asset_type !== 'native' && balance.asset_type !== 'liquidity_pool_shares' && parseFloat(balance.balance) === 1.0) {
+        const assetBalance = balance as any;
+        try {
+          const issuerAccount = await server.loadAccount(assetBalance.asset_issuer);
+          if (issuerAccount.data_attr && issuerAccount.data_attr['image']) {
+            const imageUrl = atob(issuerAccount.data_attr['image']);
+            nfts.push({
+              assetCode: assetBalance.asset_code,
+              issuer: assetBalance.asset_issuer,
+              imageUrl,
+              balance: assetBalance.balance
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load issuer data for", assetBalance.asset_code);
+        }
+      }
+    }
+    return nfts;
+  } catch (error) {
+    console.error("Fetch NFTs error:", error);
+    throw error;
+  }
+};
+
+export const mintNFT = async (
+  ownerAddress: string,
+  assetCode: string,
+  imageUrl: string
+): Promise<{ hash: string, issuerPk: string }> => {
+  const issuerKeypair = StellarSdk.Keypair.random();
+  await fundTestnet(issuerKeypair.publicKey());
+  await addTrustline(ownerAddress, assetCode, issuerKeypair.publicKey());
+  
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const fee = await server.fetchBaseFee();
+  
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  const nftAsset = new StellarSdk.Asset(assetCode, issuerKeypair.publicKey());
+  
+  txBuilder.addOperation(StellarSdk.Operation.payment({
+    destination: ownerAddress,
+    asset: nftAsset,
+    amount: "1.0000000",
+  }));
+
+  txBuilder.addOperation(StellarSdk.Operation.manageData({
+    name: "image",
+    value: imageUrl,
+  }));
+
+  txBuilder.addOperation(StellarSdk.Operation.setOptions({
+    masterWeight: 0,
+    lowThreshold: 0,
+    medThreshold: 0,
+    highThreshold: 0,
+  }));
+
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
+};
