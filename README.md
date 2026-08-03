@@ -150,10 +150,10 @@ A real-time token holder ranking system powered by a Soroban smart contract.
 - **Typed Error Handling** — robust error catching converting RPC and wallet errors into clean UI messages with expandable technical details.
 
 #### Leaderboard Demo Data
-Live Demo: [ADD AFTER DEPLOYMENT]
-Token Contract: [ADD AFTER DEPLOYMENT]
-Leaderboard Contract: [ADD AFTER DEPLOYMENT]
-Contract Call Transaction: [ADD AFTER TESTNET CALL]
+Live Demo: [Localhost only right now]
+Token Contract: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC (Testnet Native XLM)
+Leaderboard Contract: CAB7UAM35DVIJTD2ZWAMAHKMXWKC2MRO2PPOLDRLMDSGOBT4PO34TTRY
+Contract Call Transaction: 046de9186cb6f7cd78a788a904444a217a6ac2401d8e91a665b74b7d8430fabb
 
 ## Transaction Lifecycle
 
@@ -268,8 +268,8 @@ npm install
 VITE_HORIZON_URL=https://horizon-testnet.stellar.org
 VITE_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 VITE_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
-VITE_TOKEN_CONTRACT_ID=[ADD AFTER DEPLOYMENT]
-VITE_LEADERBOARD_CONTRACT_ID=[ADD AFTER DEPLOYMENT]
+VITE_TOKEN_CONTRACT_ID=CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+VITE_LEADERBOARD_CONTRACT_ID=CAB7UAM35DVIJTD2ZWAMAHKMXWKC2MRO2PPOLDRLMDSGOBT4PO34TTRY
 ```
 
 **Contract Build Instructions**
