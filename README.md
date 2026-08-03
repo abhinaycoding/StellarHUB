@@ -239,6 +239,8 @@ stellarhub/
 │  │  └─ PathVisualizer.tsx
 │  ├─ index.css                 # design tokens, radius/focus overrides
 │  └─ main.tsx
+├─ scripts/
+│  └─ seedLiquidity.cjs         # Seeds DEX liquidity on testnet for local testing
 ├─ tailwind.config.js
 ├─ vite.config.ts
 └─ package.json
@@ -290,6 +292,14 @@ stellar contract deploy \
   --network testnet
 ```
 Copy the returned contract ID into your `.env` file as `VITE_LEADERBOARD_CONTRACT_ID`.
+
+**Seeding Testnet Liquidity (Optional)**
+
+If you want to test the Swap / DEX Interface with a custom token, you can run the liquidity seed script:
+```bash
+node scripts/seedLiquidity.cjs
+```
+This script creates an Issuer, Seller, and Buyer on the Testnet, establishes trustlines, mints a custom USDC asset, and places limit orders on the decentralized exchange (DEX) so you can execute path payments locally. Be sure to copy the output Issuer Public Key to test swaps against it!
 
 **Run the dev server**
 
