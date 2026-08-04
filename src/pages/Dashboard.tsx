@@ -353,7 +353,10 @@ export function Dashboard() {
                     boxShadow: '0 10px 20px rgba(0,0,0,0.3)'
                   }}
                   itemStyle={{ color: 'var(--color-primary)', fontWeight: 'bold' }}
-                  formatter={(value: number) => [`${value.toFixed(2)} XLM`, 'Balance']}
+                  formatter={(value: any) => {
+                    if (typeof value === 'number') return [`${value.toFixed(2)} XLM`, 'Balance'];
+                    return [`${value} XLM`, 'Balance'];
+                  }}
                 />
                 <Area 
                   type="monotone" 
@@ -403,7 +406,11 @@ export function Dashboard() {
                         borderRadius: '8px',
                         boxShadow: '0 10px 20px rgba(0,0,0,0.3)'
                       }}
-                      formatter={(value: number, name: string) => name === 'Empty' ? ['No Assets', ''] : [value.toFixed(2), name]}
+                      formatter={(value: any, name: any) => {
+                        if (name === 'Empty') return ['No Assets', ''];
+                        if (typeof value === 'number') return [value.toFixed(2), name];
+                        return [value, name];
+                      }}
                    />
                  </PieChart>
                </ResponsiveContainer>

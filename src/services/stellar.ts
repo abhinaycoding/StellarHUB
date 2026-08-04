@@ -528,3 +528,62 @@ export const mintNFT = async (
   const response = await server.submitTransaction(transaction);
   return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
 };
+
+export interface LPPosition {
+  poolId: string;
+  userShares: string;
+  totalShares: string;
+  reserveA: string;
+  reserveB: string;
+  assetA: string;
+  assetB: string;
+  userAmountA: number;
+  userAmountB: number;
+}
+
+export const getUserLpPositions = async (address: string): Promise<LPPosition[]> => {
+  try {
+    const account = await server.loadAccount(address);
+    const positions: LPPosition[] = [];
+    
+    // Filter out LP share balances
+    const lpBalances = account.balances.filter((b: any) => b.asset_type === 'liquidity_pool_shares');
+    
+    for (const bal of lpBalances) {
+      const balance = bal as any;
+      const poolId = balance.liquidity_pool_id;
+      const userShares = parseFloat(balance.balance);
+      
+      if (userShares > 0) {
+        // Fetch pool details
+        const poolDetails = await server.liquidityPools().liquidityPoolId(poolId).call();
+        
+        const totalShares = parseFloat(poolDetails.total_shares);
+        const reserveA = parseFloat(poolDetails.reserves[0].amount);
+        const reserveB = parseFloat(poolDetails.reserves[1].amount);
+        
+        const assetAStr = poolDetails.reserves[0].asset.split(':')[0]; // native or CODE
+        const assetBStr = poolDetails.reserves[1].asset.split(':')[0];
+        
+        const sharePct = totalShares > 0 ? userShares / totalShares : 0;
+        
+        positions.push({
+          poolId,
+          userShares: userShares.toFixed(7),
+          totalShares: poolDetails.total_shares,
+          reserveA: poolDetails.reserves[0].amount,
+          reserveB: poolDetails.reserves[1].amount,
+          assetA: assetAStr === 'native' ? 'XLM' : assetAStr,
+          assetB: assetBStr === 'native' ? 'XLM' : assetBStr,
+          userAmountA: reserveA * sharePct,
+          userAmountB: reserveB * sharePct
+        });
+      }
+    }
+    
+    return positions;
+  } catch (error) {
+    console.error("Fetch LP positions error:", error);
+    throw error;
+  }
+};
