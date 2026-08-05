@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Book, Plus, Search, Trash2, Edit2, AlertCircle } from "lucide-react";
+import { Book, Plus, Search, Trash2, Edit2, AlertCircle, Copy, Check } from "lucide-react";
 import { useAddressBook, type AddressBookContact } from "@/contexts/AddressBookContext";
 import { isValidAddress } from "@/services/stellar";
 import toast from "react-hot-toast";
@@ -9,6 +9,7 @@ export function AddressBook() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<AddressBookContact | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({ name: "", address: "" });
 
@@ -55,6 +56,13 @@ export function AddressBook() {
       removeContact(id);
       toast.success("Contact removed");
     }
+  };
+
+  const handleCopy = (address: string, id: string) => {
+    navigator.clipboard.writeText(address);
+    setCopiedId(id);
+    toast.success("Address copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -105,13 +113,22 @@ export function AddressBook() {
                 </div>
                 <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    onClick={() => handleCopy(contact.address, contact.id)}
+                    title="Copy Address"
+                    className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    {copiedId === contact.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                  <button
                     onClick={() => openEditModal(contact)}
+                    title="Edit Contact"
                     className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(contact.id)}
+                    title="Delete Contact"
                     className="p-2 hover:bg-red-500/10 rounded-lg text-text-secondary hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
