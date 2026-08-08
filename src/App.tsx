@@ -12,6 +12,8 @@ import { Network } from "./pages/Network";
 import { TokenLeaderboard } from "./pages/TokenLeaderboard";
 import { AddressBook } from "./pages/AddressBook";
 import { Settings } from "./pages/Settings";
+import { SorobanStudio } from "./pages/SorobanStudio";
+import { TransactionBuilder } from "./pages/TransactionBuilder";
 import { Toaster } from "react-hot-toast";
 import { WalletProvider } from "./contexts/WalletContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -41,6 +43,8 @@ function App() {
                     <Route path="/leaderboard" element={<TokenLeaderboard />} />
                     <Route path="/address-book" element={<AddressBook />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/studio" element={<SorobanStudio />} />
+                    <Route path="/tx-builder" element={<TransactionBuilder />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

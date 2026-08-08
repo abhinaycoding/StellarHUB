@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon, TerminalSquare, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
@@ -10,6 +10,7 @@ const coreItems = [
   { name: "Token Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Swap", href: "/swap", icon: ArrowDownUp },
   { name: "Pools", href: "/pools", icon: Droplets },
+  { name: "Contract Studio", href: "/studio", icon: TerminalSquare },
 ];
 
 const actionItems = [
@@ -18,6 +19,7 @@ const actionItems = [
   { name: "NFTs", href: "/nfts", icon: ImageIcon },
   { name: "Mint Tokens", href: "/mint", icon: Sparkles },
   { name: "Transactions", href: "/transactions", icon: Activity },
+  { name: "TX Builder", href: "/tx-builder", icon: Wrench },
 ];
 
 const preferenceItems = [
