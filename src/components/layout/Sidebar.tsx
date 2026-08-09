@@ -20,6 +20,7 @@ const actionItems = [
   { name: "Mint Tokens", href: "/mint", icon: Sparkles },
   { name: "Transactions", href: "/transactions", icon: Activity },
   { name: "TX Builder", href: "/tx-builder", icon: Wrench },
+  { name: "Asset Faucet", href: "/faucet", icon: Droplets },
 ];
 
 const preferenceItems = [

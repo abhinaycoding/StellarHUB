@@ -401,6 +401,43 @@ export const mintToken = async (
   return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
 };
 
+export const dripCustomAsset = async (
+  destination: string,
+  assetCode: string,
+  amount: string,
+  issuerSecret: string
+): Promise<{ hash: string }> => {
+  const issuerKeypair = StellarSdk.Keypair.fromSecret(issuerSecret);
+  const fee = await server.fetchBaseFee();
+
+  // Check if destination has trustline
+  const destAccount = await server.loadAccount(destination);
+  const hasTrustline = destAccount.balances.some(
+    (b: any) => b.asset_type !== 'native' && b.asset_code === assetCode && b.asset_issuer === issuerKeypair.publicKey()
+  );
+
+  if (!hasTrustline) {
+    await addTrustline(destination, assetCode, issuerKeypair.publicKey());
+  }
+
+  // Load issuer account to get the current sequence number
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  txBuilder.addOperation(StellarSdk.Operation.payment({
+    destination: destination,
+    asset: new StellarSdk.Asset(assetCode, issuerKeypair.publicKey()),
+    amount: amount.toString(),
+  }));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash };
+};
+
 export const streamNetworkOperations = (
   onMessage: (op: any) => void,
   onError: (err: any) => void
