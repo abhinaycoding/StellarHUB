@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Book, Plus, Search, Trash2, Edit2, AlertCircle, Copy, Check } from "lucide-react";
+import { Book, Plus, Search, Trash2, Edit2, AlertCircle, Copy, Check, UserPlus } from "lucide-react";
 import { useAddressBook, type AddressBookContact } from "@/contexts/AddressBookContext";
 import { isValidAddress } from "@/services/stellar";
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function AddressBook() {
   const { contacts, addContact, updateContact, removeContact } = useAddressBook();
@@ -75,13 +76,15 @@ export function AddressBook() {
           </h1>
           <p className="text-text-secondary mt-1">Manage your saved Stellar addresses</p>
         </div>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => setIsModalOpen(true)}
           className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Contact
-        </button>
+        </motion.button>
       </div>
 
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
@@ -98,51 +101,121 @@ export function AddressBook() {
           </div>
         </div>
 
-        <div className="divide-y divide-border">
-          {filteredContacts.length === 0 ? (
-            <div className="p-8 text-center text-text-secondary">
-              <Book className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>No contacts found.</p>
-            </div>
-          ) : (
-            filteredContacts.map((contact) => (
-              <div key={contact.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-medium text-text-primary truncate">{contact.name}</h3>
-                  <p className="text-sm font-mono text-text-secondary truncate mt-1">{contact.address}</p>
+        <div className="divide-y divide-border min-h-[300px]">
+          <AnimatePresence mode="popLayout">
+            {filteredContacts.length === 0 ? (
+              <motion.div 
+                key="empty-state"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="p-12 text-center flex flex-col items-center justify-center h-[300px]"
+              >
+                <div className="relative mb-6">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, -5, 5, 0]
+                    }}
+                    transition={{ 
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    className="bg-primary/10 p-6 rounded-full relative z-10"
+                  >
+                    <Book className="w-12 h-12 text-primary" />
+                  </motion.div>
+                  <motion.div 
+                    animate={{ y: [0, -12, 0] }} 
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                    className="absolute -top-4 -right-4 bg-background p-2 rounded-full border border-border z-20 shadow-lg"
+                  >
+                    <UserPlus className="w-5 h-5 text-text-secondary" />
+                  </motion.div>
                 </div>
-                <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleCopy(contact.address, contact.id)}
-                    title="Copy Address"
-                    className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                <h3 className="text-xl font-bold text-text-primary mb-2">
+                  {search ? "No contacts found" : "Your address book is empty"}
+                </h3>
+                <p className="text-text-secondary max-w-sm text-center">
+                  {search ? `We couldn't find any contacts matching "${search}".` : "Add a new Stellar address to quickly access it for sending and receiving."}
+                </p>
+                {!search && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsModalOpen(true)}
+                    className="mt-6 text-primary font-medium flex items-center gap-2 hover:underline"
                   >
-                    {copiedId === contact.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                  <button
-                    onClick={() => openEditModal(contact)}
-                    title="Edit Contact"
-                    className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(contact.id)}
-                    title="Delete Contact"
-                    className="p-2 hover:bg-red-500/10 rounded-lg text-text-secondary hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+                    <Plus className="w-4 h-4" /> Add your first contact
+                  </motion.button>
+                )}
+              </motion.div>
+            ) : (
+              filteredContacts.map((contact) => (
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                  key={contact.id} 
+                  className="p-4 flex items-center justify-between group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium text-text-primary truncate">{contact.name}</h3>
+                    <p className="text-sm font-mono text-text-secondary truncate mt-1">{contact.address}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleCopy(contact.address, contact.id)}
+                      title="Copy Address"
+                      className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      {copiedId === contact.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => openEditModal(contact)}
+                      title="Edit Contact"
+                      className="p-2 hover:bg-white/10 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDelete(contact.id)}
+                      title="Delete Contact"
+                      className="p-2 hover:bg-red-500/10 rounded-lg text-text-secondary hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
             <div className="p-6">
               <h2 className="text-xl font-bold text-text-primary mb-6">
                 {editingContact ? "Edit Contact" : "Add New Contact"}
@@ -180,24 +253,28 @@ export function AddressBook() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={handleCloseModal}
                     className="flex-1 px-4 py-2 rounded-lg font-medium bg-background hover:bg-white/5 text-text-primary border border-border transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
                     className="flex-1 px-4 py-2 rounded-lg font-medium bg-primary hover:bg-primary/90 text-white transition-colors"
                   >
                     {editingContact ? "Save Changes" : "Add Contact"}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );
