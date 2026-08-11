@@ -276,6 +276,7 @@ export function AddressBook() {
           </motion.div>
         </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
