@@ -624,3 +624,29 @@ export const getUserLpPositions = async (address: string): Promise<LPPosition[]>
     throw error;
   }
 };
+
+export const getAccountDetails = async (address: string): Promise<any> => {
+  try {
+    const account = await server.loadAccount(address);
+    return account;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      throw new Error("Account not found on the network.");
+    }
+    console.error("Fetch account details error:", error);
+    throw error;
+  }
+};
+
+export const getAccountOperations = async (address: string, limit: number = 50): Promise<any[]> => {
+  try {
+    const response = await server.operations().forAccount(address).order("desc").limit(limit).call();
+    return response.records;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return [];
+    }
+    console.error("Fetch account operations error:", error);
+    throw error;
+  }
+};
