@@ -368,21 +368,17 @@ export const sendPathPayment = async (
   return response.hash;
 };
 
-export const mintToken = async (
+export const issueAsset = async (
   distributorAddress: string,
   tokenCode: string,
   totalSupply: string
-): Promise<{ hash: string, issuerPk: string }> => {
-  // Create ephemeral issuer
+): Promise<{ hash: string, issuerPk: string, issuerSecret: string }> => {
   const issuerKeypair = StellarSdk.Keypair.random();
   
-  // Fund issuer with 1.5 XLM from friendbot (testnet)
   await fundTestnet(issuerKeypair.publicKey());
   
-  // Set up trustline from distributor to issuer
   await addTrustline(distributorAddress, tokenCode, issuerKeypair.publicKey());
   
-  // Send tokens from issuer to distributor
   const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
   const fee = await server.fetchBaseFee();
   
@@ -398,7 +394,91 @@ export const mintToken = async (
   transaction.sign(issuerKeypair);
   
   const response = await server.submitTransaction(transaction);
-  return { hash: response.hash, issuerPk: issuerKeypair.publicKey() };
+  return { hash: response.hash, issuerPk: issuerKeypair.publicKey(), issuerSecret: issuerKeypair.secret() };
+};
+
+export const mintAdditionalSupply = async (
+  issuerSecret: string,
+  tokenCode: string,
+  amount: string,
+  distributorAddress: string
+): Promise<{ hash: string }> => {
+  const issuerKeypair = StellarSdk.Keypair.fromSecret(issuerSecret);
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const fee = await server.fetchBaseFee();
+
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  txBuilder.addOperation(StellarSdk.Operation.payment({
+    destination: distributorAddress,
+    asset: new StellarSdk.Asset(tokenCode, issuerKeypair.publicKey()),
+    amount: amount.toString(),
+  }));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash };
+};
+
+export const lockAssetSupply = async (
+  issuerSecret: string
+): Promise<{ hash: string }> => {
+  const issuerKeypair = StellarSdk.Keypair.fromSecret(issuerSecret);
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const fee = await server.fetchBaseFee();
+
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  txBuilder.addOperation(StellarSdk.Operation.setOptions({
+    masterWeight: 0,
+    lowThreshold: 0,
+    medThreshold: 0,
+    highThreshold: 0
+  }));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash };
+};
+
+export const setAuthFlags = async (
+  issuerSecret: string,
+  flags: { authRequired?: boolean; authRevocable?: boolean; authClawbackEnabled?: boolean }
+): Promise<{ hash: string }> => {
+  const issuerKeypair = StellarSdk.Keypair.fromSecret(issuerSecret);
+  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const fee = await server.fetchBaseFee();
+
+  let setFlags = 0;
+  let clearFlags = 0;
+
+  if (flags.authRequired === true) setFlags |= StellarSdk.AuthRequiredFlag;
+  else if (flags.authRequired === false) clearFlags |= StellarSdk.AuthRequiredFlag;
+
+  if (flags.authRevocable === true) setFlags |= StellarSdk.AuthRevocableFlag;
+  else if (flags.authRevocable === false) clearFlags |= StellarSdk.AuthRevocableFlag;
+
+  if (flags.authClawbackEnabled === true) setFlags |= StellarSdk.AuthClawbackEnabledFlag;
+  else if (flags.authClawbackEnabled === false) clearFlags |= StellarSdk.AuthClawbackEnabledFlag;
+
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  
+  const options: any = {};
+  if (setFlags > 0) options.setFlags = setFlags;
+  if (clearFlags > 0) options.clearFlags = clearFlags;
+  
+  txBuilder.addOperation(StellarSdk.Operation.setOptions(options));
+  txBuilder.setTimeout(300);
+  
+  const transaction = txBuilder.build();
+  transaction.sign(issuerKeypair);
+  
+  const response = await server.submitTransaction(transaction);
+  return { hash: response.hash };
 };
 
 export const dripCustomAsset = async (
