@@ -64,6 +64,22 @@ export const getBalances = async (address: string): Promise<{ xlm: number, usdc:
   }
 };
 
+export const getAllBalances = async (address: string): Promise<{ assetCode: string, issuer?: string, balance: string }[]> => {
+  try {
+    const account = await server.loadAccount(address);
+    return account.balances.map((b: any) => ({
+      assetCode: b.asset_type === 'native' ? 'XLM' : (b.asset_code || 'UNKNOWN'),
+      issuer: b.asset_issuer,
+      balance: b.balance
+    }));
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return [];
+    }
+    throw error;
+  }
+};
+
 export const addTrustline = async (address: string, assetCode: string, issuer: string): Promise<string> => {
   const account = await server.loadAccount(address);
   const fee = await server.fetchBaseFee();

@@ -16,6 +16,7 @@ import { SorobanStudio } from "./pages/SorobanStudio";
 import { TransactionBuilder } from "./pages/TransactionBuilder";
 import { Faucet } from "./pages/Faucet";
 import { Explorer } from "./pages/Explorer";
+import { Assets } from "./pages/Assets";
 import { Toaster } from "react-hot-toast";
 import { WalletProvider } from "./contexts/WalletContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -49,6 +50,7 @@ function App() {
                     <Route path="/tx-builder" element={<TransactionBuilder />} />
                     <Route path="/faucet" element={<Faucet />} />
                     <Route path="/explorer" element={<Explorer />} />
+                    <Route path="/assets" element={<Assets />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>
