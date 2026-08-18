@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Droplets, ShieldAlert, KeyRound, Coins, CheckCircle2 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { dripCustomAsset } from "@/services/stellar";
 import toast from "react-hot-toast";
 
 export function Faucet() {
   const { address } = useWallet();
+  const { settings } = useSettings();
   const [assetCode, setAssetCode] = useState("");
   const [dripAmount, setDripAmount] = useState("");
   const [issuerSecret, setIssuerSecret] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successInfo, setSuccessInfo] = useState<{ code: string, amount: string, hash: string } | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ code: string, amount: string, hash: string, network: string } | null>(null);
 
   const handleDrip = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +36,19 @@ export function Faucet() {
       return;
     }
 
+    // Faucet shouldn't work on Mainnet typically, restrict to Testnet/Futurenet
+    if (settings.network === 'mainnet') {
+      toast.error("The faucet is only available on Testnet and Futurenet");
+      return;
+    }
+
     setIsSubmitting(true);
-    const loadingToast = toast.loading("Processing faucet drip... Please sign trustline in Freighter if prompted.");
+    const loadingToast = toast.loading(`Processing faucet drip on ${settings.network}... Please sign trustline in Freighter if prompted.`);
 
     try {
-      const { hash } = await dripCustomAsset(address, assetCode.toUpperCase(), dripAmount, issuerSecret);
+      const { hash } = await dripCustomAsset(address, assetCode.toUpperCase(), dripAmount, issuerSecret, settings.network as 'testnet' | 'futurenet');
       toast.success(`${dripAmount} ${assetCode.toUpperCase()} sent successfully!`, { id: loadingToast });
-      setSuccessInfo({ code: assetCode.toUpperCase(), amount: dripAmount, hash });
+      setSuccessInfo({ code: assetCode.toUpperCase(), amount: dripAmount, hash, network: settings.network });
       setAssetCode("");
       setDripAmount("");
     } catch (error: any) {
@@ -51,6 +59,10 @@ export function Faucet() {
   };
 
   if (successInfo) {
+    const explorerBaseUrl = successInfo.network === 'futurenet' 
+      ? 'https://stellar.expert/explorer/futurenet/tx'
+      : 'https://stellar.expert/explorer/testnet/tx';
+      
     return (
       <div className="max-w-md mx-auto mt-12 bg-surface border border-border rounded-lg p-8 text-center">
         <div className="flex justify-center mb-4">
@@ -58,7 +70,7 @@ export function Faucet() {
         </div>
         <h2 className="text-2xl font-bold text-text-primary mb-2">Tokens Dripped!</h2>
         <p className="text-text-secondary mb-6">
-          You successfully received {successInfo.amount} {successInfo.code} to your wallet.
+          You successfully received {successInfo.amount} {successInfo.code} to your wallet on {successInfo.network}.
         </p>
         
         <div className="flex gap-4 mt-8">
@@ -69,7 +81,7 @@ export function Faucet() {
             Drip More
           </button>
           <a 
-            href={`https://stellar.expert/explorer/testnet/tx/${successInfo.hash}`}
+            href={`${explorerBaseUrl}/${successInfo.hash}`}
             target="_blank"
             rel="noreferrer"
             className="flex-1 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm inline-flex items-center justify-center"
@@ -83,12 +95,17 @@ export function Faucet() {
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary mb-2 flex items-center gap-2">
-          <Droplets className="w-8 h-8 text-primary" />
-          Asset Faucet
-        </h1>
-        <p className="text-text-secondary">Drip custom testnet tokens directly to your connected wallet.</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-text-primary mb-2 flex items-center gap-2">
+            <Droplets className="w-8 h-8 text-primary" />
+            Asset Faucet
+          </h1>
+          <p className="text-text-secondary">Drip custom tokens directly to your connected wallet.</p>
+        </div>
+        <div className="bg-surface-light border border-border px-3 py-1 rounded-full text-xs font-medium text-text-secondary uppercase">
+          {settings.network}
+        </div>
       </div>
 
       <div className="relative">
@@ -154,8 +171,10 @@ export function Faucet() {
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : !address ? (
                 "Connect Wallet"
+              ) : settings.network === 'mainnet' ? (
+                "Not Available on Mainnet"
               ) : (
-                "Drip Tokens"
+                `Drip on ${settings.network}`
               )}
             </button>
           </form>

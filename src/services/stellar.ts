@@ -80,22 +80,27 @@ export const getAllBalances = async (address: string): Promise<{ assetCode: stri
   }
 };
 
-export const addTrustline = async (address: string, assetCode: string, issuer: string): Promise<string> => {
-  const account = await server.loadAccount(address);
-  const fee = await server.fetchBaseFee();
+export const addTrustline = async (address: string, assetCode: string, issuer: string, network: 'testnet' | 'futurenet' = 'testnet'): Promise<string> => {
+  const horizonUrl = network === 'futurenet' ? 'https://horizon-futurenet.stellar.org' : 'https://horizon-testnet.stellar.org';
+  const localServer = new StellarSdk.Horizon.Server(horizonUrl);
+  const networkPassphrase = network === 'futurenet' ? StellarSdk.Networks.FUTURENET : StellarSdk.Networks.TESTNET;
+  const uppercaseNetwork = network.toUpperCase();
+
+  const account = await localServer.loadAccount(address);
+  const fee = await localServer.fetchBaseFee();
   const asset = new StellarSdk.Asset(assetCode, issuer);
 
-  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  const txBuilder = new StellarSdk.TransactionBuilder(account, { fee: fee.toString(), networkPassphrase });
   txBuilder.addOperation(StellarSdk.Operation.changeTrust({ asset }));
   txBuilder.setTimeout(300);
   
   const transaction = txBuilder.build();
   const xdr = transaction.toXDR();
-  const signedTxRes = await signTransaction(xdr, { network: "TESTNET", networkPassphrase: StellarSdk.Networks.TESTNET, address } as any);
+  const signedTxRes = await signTransaction(xdr, { network: uppercaseNetwork, networkPassphrase, address } as any);
   if (signedTxRes.error || !signedTxRes.signedTxXdr) throw new Error(signedTxRes.error?.toString() || "Signing failed");
 
-  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, StellarSdk.Networks.TESTNET) as StellarSdk.Transaction;
-  const response = await server.submitTransaction(signedTransaction);
+  const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(signedTxRes.signedTxXdr, networkPassphrase) as StellarSdk.Transaction;
+  const response = await localServer.submitTransaction(signedTransaction);
   return response.hash;
 };
 
@@ -501,25 +506,42 @@ export const dripCustomAsset = async (
   destination: string,
   assetCode: string,
   amount: string,
-  issuerSecret: string
+  issuerSecret: string,
+  network: 'testnet' | 'futurenet' = 'testnet'
 ): Promise<{ hash: string }> => {
   const issuerKeypair = StellarSdk.Keypair.fromSecret(issuerSecret);
-  const fee = await server.fetchBaseFee();
+  
+  const horizonUrl = network === 'futurenet' ? 'https://horizon-futurenet.stellar.org' : 'https://horizon-testnet.stellar.org';
+  const localServer = new StellarSdk.Horizon.Server(horizonUrl);
+  const networkPassphrase = network === 'futurenet' ? StellarSdk.Networks.FUTURENET : StellarSdk.Networks.TESTNET;
+
+  const fee = await localServer.fetchBaseFee();
 
   // Check if destination has trustline
-  const destAccount = await server.loadAccount(destination);
+  const destAccount = await localServer.loadAccount(destination);
   const hasTrustline = destAccount.balances.some(
     (b: any) => b.asset_type !== 'native' && b.asset_code === assetCode && b.asset_issuer === issuerKeypair.publicKey()
   );
 
   if (!hasTrustline) {
-    await addTrustline(destination, assetCode, issuerKeypair.publicKey());
+    // Note: addTrustline relies on the global testnet server. 
+    // To properly fix this we need to either refactor addTrustline as well, or inline a simplified trustline addition here.
+    // Let's inline a quick trustline addition for the correct network:
+    const txBuilderTrust = new StellarSdk.TransactionBuilder(destAccount, { fee: fee.toString(), networkPassphrase });
+    txBuilderTrust.addOperation(StellarSdk.Operation.changeTrust({ asset: new StellarSdk.Asset(assetCode, issuerKeypair.publicKey()) }));
+    txBuilderTrust.setTimeout(300);
+    const txTrust = txBuilderTrust.build();
+    // Assuming we can't easily sign for the destination here if it's the connected wallet, 
+    // Wait, the original code called `addTrustline(destination, assetCode, issuerKeypair.publicKey())`.
+    // `addTrustline` prompts Freighter to sign.
+    // If we call the global `addTrustline`, it uses TESTNET. We should update `addTrustline` or pass network to it.
+    await addTrustline(destination, assetCode, issuerKeypair.publicKey(), network);
   }
 
   // Load issuer account to get the current sequence number
-  const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+  const issuerAccount = await localServer.loadAccount(issuerKeypair.publicKey());
   
-  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase: StellarSdk.Networks.TESTNET });
+  const txBuilder = new StellarSdk.TransactionBuilder(issuerAccount, { fee: fee.toString(), networkPassphrase });
   txBuilder.addOperation(StellarSdk.Operation.payment({
     destination: destination,
     asset: new StellarSdk.Asset(assetCode, issuerKeypair.publicKey()),
@@ -530,7 +552,7 @@ export const dripCustomAsset = async (
   const transaction = txBuilder.build();
   transaction.sign(issuerKeypair);
   
-  const response = await server.submitTransaction(transaction);
+  const response = await localServer.submitTransaction(transaction);
   return { hash: response.hash };
 };
 
