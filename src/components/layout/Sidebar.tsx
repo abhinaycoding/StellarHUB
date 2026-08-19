@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon, TerminalSquare, Wrench, Compass, Coins, Users } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon, TerminalSquare, Wrench, Compass, Coins, Users, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
 
 const coreItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Portfolio", href: "/portfolio", icon: PieChart },
   { name: "Network Explorer", href: "/explorer", icon: Compass },
   { name: "Assets", href: "/assets", icon: Coins },
   { name: "Network Metrics", href: "/network", icon: Server },
