@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon, TerminalSquare, Wrench, Compass, Coins } from "lucide-react";
+import { LayoutDashboard, Send, ArrowDownToLine, Activity, ArrowDownUp, Droplets, Sparkles, Star, Trophy, Server, Book, Settings, Image as ImageIcon, TerminalSquare, Wrench, Compass, Coins, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { ExternalLink } from "lucide-react";
@@ -23,6 +23,7 @@ const actionItems = [
   { name: "Transactions", href: "/transactions", icon: Activity },
   { name: "TX Builder", href: "/tx-builder", icon: Wrench },
   { name: "Asset Faucet", href: "/faucet", icon: Droplets },
+  { name: "MultiSig", href: "/multisig", icon: Users },
 ];
 
 const preferenceItems = [

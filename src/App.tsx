@@ -12,6 +12,7 @@ import { Network } from "./pages/Network";
 import { TokenLeaderboard } from "./pages/TokenLeaderboard";
 import { AddressBook } from "./pages/AddressBook";
 import { Settings } from "./pages/Settings";
+import { MultiSig } from "./pages/MultiSig";
 import { SorobanStudio } from "./pages/SorobanStudio";
 import { TransactionBuilder } from "./pages/TransactionBuilder";
 import { Faucet } from "./pages/Faucet";
@@ -46,6 +47,7 @@ function App() {
                     <Route path="/leaderboard" element={<TokenLeaderboard />} />
                     <Route path="/address-book" element={<AddressBook />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/multisig" element={<MultiSig />} />
                     <Route path="/studio" element={<SorobanStudio />} />
                     <Route path="/tx-builder" element={<TransactionBuilder />} />
                     <Route path="/faucet" element={<Faucet />} />
