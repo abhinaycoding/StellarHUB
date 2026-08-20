@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Wrench, Plus, Trash2, Code, ArrowRight, Search, FileJson } from "lucide-react";
+import { Wrench, Plus, Trash2, Code, ArrowRight, Search, FileJson, Clock } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { signTransaction } from "@stellar/freighter-api";
@@ -22,6 +22,9 @@ export function TransactionBuilder() {
   const [baseFee, setBaseFee] = useState("100");
   const [xdr, setXdr] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [useTimebounds, setUseTimebounds] = useState(false);
+  const [minTime, setMinTime] = useState("");
+  const [maxTime, setMaxTime] = useState("");
 
   // Decoder State
   const [decoderInput, setDecoderInput] = useState("");
@@ -45,7 +48,7 @@ export function TransactionBuilder() {
 
   useEffect(() => {
     generateXdr();
-  }, [operations, baseFee, address]);
+  }, [operations, baseFee, address, useTimebounds, minTime, maxTime]);
 
   const generateXdr = async () => {
     if (!address || operations.length === 0) {
@@ -65,6 +68,12 @@ export function TransactionBuilder() {
       const txBuilder = new StellarSdk.TransactionBuilder(account, {
         fee: baseFee.toString(),
         networkPassphrase: StellarSdk.Networks.TESTNET,
+        ...(useTimebounds ? {
+          timebounds: {
+            minTime: minTime || "0",
+            maxTime: maxTime || "0"
+          }
+        } : {})
       });
 
       operations.forEach((op) => {
@@ -93,7 +102,9 @@ export function TransactionBuilder() {
         }
       });
 
-      txBuilder.setTimeout(300);
+      if (!useTimebounds) {
+        txBuilder.setTimeout(300);
+      }
       const tx = txBuilder.build();
       setXdr(tx.toXDR());
     } catch (e) {
@@ -273,6 +284,42 @@ export function TransactionBuilder() {
           </div>
 
           <div className="space-y-4">
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Preconditions
+                </h3>
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={useTimebounds} onChange={() => setUseTimebounds(!useTimebounds)} />
+                    <div className={`block w-8 h-5 rounded-full transition-colors ${useTimebounds ? 'bg-primary' : 'bg-background border border-border'}`}></div>
+                    <div className={`absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${useTimebounds ? 'transform translate-x-3' : ''}`}></div>
+                  </div>
+                </label>
+              </div>
+              {useTimebounds && (
+                <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-medium text-text-secondary">Min Time (Epoch)</label>
+                      <button onClick={() => setMinTime(Math.floor(Date.now() / 1000).toString())} className="text-[10px] text-primary hover:underline">Now</button>
+                    </div>
+                    <input type="text" value={minTime} onChange={e => setMinTime(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm font-mono focus:border-primary outline-none" placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-medium text-text-secondary">Max Time (Epoch)</label>
+                      <div className="flex gap-2">
+                        <button onClick={() => setMaxTime(Math.floor(Date.now() / 1000 + 300).toString())} className="text-[10px] text-primary hover:underline">+ 5m</button>
+                        <button onClick={() => setMaxTime(Math.floor(Date.now() / 1000 + 3600).toString())} className="text-[10px] text-primary hover:underline">+ 1h</button>
+                      </div>
+                    </div>
+                    <input type="text" value={maxTime} onChange={e => setMaxTime(e.target.value)} className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm font-mono focus:border-primary outline-none" placeholder="0" />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="bg-surface border border-border rounded-xl p-6 space-y-6">
               <div>
                 <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
@@ -379,6 +426,43 @@ export function TransactionBuilder() {
                       {decodedTx.signatures.length} signature(s) attached
                     </div>
                   </div>
+                  
+                  {decodedTx instanceof StellarSdk.Transaction && decodedTx.timeBounds && (
+                    <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 bg-background/50 border border-border rounded-lg p-4">
+                      <div className="space-y-1">
+                        <div className="text-xs text-text-secondary font-medium">Min Time</div>
+                        <div className="font-mono text-sm text-text-primary">
+                          {decodedTx.timeBounds.minTime !== "0" ? new Date(parseInt(decodedTx.timeBounds.minTime) * 1000).toLocaleString() : "0 (Unbounded)"}
+                          <div className="text-[10px] text-text-secondary">{decodedTx.timeBounds.minTime}</div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-text-secondary font-medium">Max Time</div>
+                        <div className="font-mono text-sm text-text-primary">
+                          {decodedTx.timeBounds.maxTime !== "0" ? new Date(parseInt(decodedTx.timeBounds.maxTime) * 1000).toLocaleString() : "0 (Unbounded)"}
+                          <div className="text-[10px] text-text-secondary">{decodedTx.timeBounds.maxTime}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {decodedTx instanceof StellarSdk.FeeBumpTransaction && decodedTx.innerTransaction.timeBounds && (
+                    <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 bg-background/50 border border-border rounded-lg p-4">
+                      <div className="space-y-1">
+                        <div className="text-xs text-text-secondary font-medium">Min Time (Inner Tx)</div>
+                        <div className="font-mono text-sm text-text-primary">
+                          {decodedTx.innerTransaction.timeBounds.minTime !== "0" ? new Date(parseInt(decodedTx.innerTransaction.timeBounds.minTime) * 1000).toLocaleString() : "0 (Unbounded)"}
+                          <div className="text-[10px] text-text-secondary">{decodedTx.innerTransaction.timeBounds.minTime}</div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-text-secondary font-medium">Max Time (Inner Tx)</div>
+                        <div className="font-mono text-sm text-text-primary">
+                          {decodedTx.innerTransaction.timeBounds.maxTime !== "0" ? new Date(parseInt(decodedTx.innerTransaction.timeBounds.maxTime) * 1000).toLocaleString() : "0 (Unbounded)"}
+                          <div className="text-[10px] text-text-secondary">{decodedTx.innerTransaction.timeBounds.maxTime}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t border-border">
