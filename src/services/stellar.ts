@@ -526,11 +526,6 @@ export const dripCustomAsset = async (
   if (!hasTrustline) {
     // Note: addTrustline relies on the global testnet server. 
     // To properly fix this we need to either refactor addTrustline as well, or inline a simplified trustline addition here.
-    // Let's inline a quick trustline addition for the correct network:
-    const txBuilderTrust = new StellarSdk.TransactionBuilder(destAccount, { fee: fee.toString(), networkPassphrase });
-    txBuilderTrust.addOperation(StellarSdk.Operation.changeTrust({ asset: new StellarSdk.Asset(assetCode, issuerKeypair.publicKey()) }));
-    txBuilderTrust.setTimeout(300);
-    const txTrust = txBuilderTrust.build();
     // Assuming we can't easily sign for the destination here if it's the connected wallet, 
     // Wait, the original code called `addTrustline(destination, assetCode, issuerKeypair.publicKey())`.
     // `addTrustline` prompts Freighter to sign.

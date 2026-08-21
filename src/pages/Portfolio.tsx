@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { PieChart as PieChartIcon, Download, TrendingUp, TrendingDown, Activity, DollarSign, Calendar } from "lucide-react";
+import { PieChart as PieChartIcon, Download, TrendingUp, Activity, DollarSign, Calendar } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -168,7 +168,7 @@ export function Portfolio() {
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px' }}
                   itemStyle={{ color: 'var(--color-primary)', fontWeight: 'bold' }}
-                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Value']}
+                  formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Value']}
                 />
                 <Area type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
               </AreaChart>
@@ -198,7 +198,7 @@ export function Portfolio() {
                  </Pie>
                  <Tooltip 
                     contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px' }}
-                    formatter={(value: number, name: string) => [`$${value}`, name]}
+                    formatter={(value: any, name: any) => [`$${value}`, name]}
                  />
                </PieChart>
              </ResponsiveContainer>
