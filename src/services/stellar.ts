@@ -14,6 +14,10 @@ export const isValidAddress = (address: string): boolean => {
   return StellarSdk.StrKey.isValidEd25519PublicKey(address);
 };
 
+export const isValidTransactionHash = (hash: string): boolean => {
+  return /^[0-9a-fA-F]{64}$/.test(hash);
+};
+
 export const connectWallet = async (): Promise<string | null> => {
   try {
     const connectedRes = await isConnected();
@@ -760,6 +764,32 @@ export const getAccountOperations = async (address: string, limit: number = 50):
       return [];
     }
     console.error("Fetch account operations error:", error);
+    throw error;
+  }
+};
+
+export const getTransactionDetails = async (hash: string): Promise<any> => {
+  try {
+    const transaction = await server.transactions().transaction(hash).call();
+    return transaction;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      throw new Error("Transaction not found on the network.");
+    }
+    console.error("Fetch transaction details error:", error);
+    throw error;
+  }
+};
+
+export const getTransactionOperations = async (hash: string): Promise<any[]> => {
+  try {
+    const response = await server.operations().forTransaction(hash).call();
+    return response.records;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return [];
+    }
+    console.error("Fetch transaction operations error:", error);
     throw error;
   }
 };

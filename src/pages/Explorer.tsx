@@ -1,14 +1,22 @@
 import { useState } from "react";
-import { Search, Compass, Activity, Code, User } from "lucide-react";
-import { isValidAddress, getAccountDetails, getAccountOperations } from "../services/stellar";
+import { Search, Compass, Activity, Code, User, FileText } from "lucide-react";
+import { 
+  isValidAddress, 
+  isValidTransactionHash,
+  getAccountDetails, 
+  getAccountOperations,
+  getTransactionDetails,
+  getTransactionOperations
+} from "../services/stellar";
 import { useAddressBook } from "../contexts/AddressBookContext";
 import toast from "react-hot-toast";
 
 export function Explorer() {
   const { contacts } = useAddressBook();
-  const [addressInput, setAddressInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   
-  const [accountData, setAccountData] = useState<any>(null);
+  const [searchType, setSearchType] = useState<'account' | 'transaction' | null>(null);
+  const [resultData, setResultData] = useState<any>(null);
   const [operations, setOperations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,29 +24,42 @@ export function Explorer() {
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const addr = addressInput.trim();
-    if (!addr) return;
+    const input = searchInput.trim();
+    if (!input) return;
     
-    if (!isValidAddress(addr)) {
-      toast.error("Invalid Stellar address");
+    const isAddr = isValidAddress(input);
+    const isTx = isValidTransactionHash(input);
+
+    if (!isAddr && !isTx) {
+      toast.error("Invalid Stellar address or transaction hash");
       return;
     }
     
     setIsLoading(true);
     setError(null);
-    setAccountData(null);
+    setResultData(null);
     setOperations([]);
     setViewMode('ui');
+    setSearchType(isAddr ? 'account' : 'transaction');
     
     try {
-      const [acc, ops] = await Promise.all([
-        getAccountDetails(addr),
-        getAccountOperations(addr, 50)
-      ]);
-      setAccountData(acc);
-      setOperations(ops);
+      if (isAddr) {
+        const [acc, ops] = await Promise.all([
+          getAccountDetails(input),
+          getAccountOperations(input, 50)
+        ]);
+        setResultData(acc);
+        setOperations(ops);
+      } else {
+        const [tx, ops] = await Promise.all([
+          getTransactionDetails(input),
+          getTransactionOperations(input)
+        ]);
+        setResultData(tx);
+        setOperations(ops);
+      }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch account data");
+      setError(err.message || "Failed to fetch data");
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +68,7 @@ export function Explorer() {
   const handleContactSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     if (val) {
-      setAddressInput(val);
+      setSearchInput(val);
     }
   };
 
@@ -59,7 +80,7 @@ export function Explorer() {
             <Compass className="w-8 h-8 text-primary" />
             Network Explorer
           </h1>
-          <p className="text-text-secondary mt-1">Look up any Stellar address on the Testnet</p>
+          <p className="text-text-secondary mt-1">Look up any Stellar address or transaction hash on the Testnet</p>
         </div>
       </div>
 
@@ -69,9 +90,9 @@ export function Explorer() {
             <Search className="w-5 h-5 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Enter Stellar address (G...)"
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
+              placeholder="Enter Stellar address (G...) or transaction hash"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full font-mono bg-background border border-border rounded-lg pl-10 pr-4 py-3 text-text-primary focus:outline-none focus:border-white/20 transition-colors"
             />
           </div>
@@ -92,7 +113,7 @@ export function Explorer() {
           )}
           <button
             type="submit"
-            disabled={!addressInput || isLoading}
+            disabled={!searchInput || isLoading}
             className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             {isLoading ? "Searching..." : "Search"}
@@ -106,7 +127,7 @@ export function Explorer() {
         </div>
       )}
 
-      {accountData && !isLoading && (
+      {resultData && !isLoading && (
         <div className="space-y-6">
           <div className="flex gap-4 border-b border-border/50">
             <button
@@ -127,42 +148,81 @@ export function Explorer() {
           {viewMode === 'ui' ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-1 space-y-6">
-                <div className="bg-surface border border-border rounded-xl p-5">
-                  <h3 className="text-sm font-medium text-text-secondary mb-4 flex items-center gap-2">
-                    <User className="w-4 h-4" /> Account Details
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-xs text-text-secondary mb-1">Address</div>
-                      <div className="font-mono text-sm text-text-primary break-all bg-background border border-border/50 p-2 rounded">{accountData.account_id}</div>
-                    </div>
-                    <div className="flex justify-between">
-                      <div className="text-xs text-text-secondary">Sequence Number</div>
-                      <div className="font-mono text-sm text-text-primary">{accountData.sequence}</div>
-                    </div>
-                    <div className="flex justify-between">
-                      <div className="text-xs text-text-secondary">Subentry Count</div>
-                      <div className="font-mono text-sm text-text-primary">{accountData.subentry_count}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-surface border border-border rounded-xl p-5">
-                  <h3 className="text-sm font-medium text-text-secondary mb-4">Balances</h3>
-                  <div className="space-y-3">
-                    {accountData.balances.map((b: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center bg-background border border-border/50 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${b.asset_type === 'native' ? 'bg-primary' : 'bg-teal-400'}`} />
-                          <span className="font-medium text-text-primary text-sm">
-                            {b.asset_type === 'native' ? 'XLM' : b.asset_code}
-                          </span>
+                
+                {searchType === 'account' ? (
+                  <>
+                    <div className="bg-surface border border-border rounded-xl p-5">
+                      <h3 className="text-sm font-medium text-text-secondary mb-4 flex items-center gap-2">
+                        <User className="w-4 h-4" /> Account Details
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="text-xs text-text-secondary mb-1">Address</div>
+                          <div className="font-mono text-sm text-text-primary break-all bg-background border border-border/50 p-2 rounded">{resultData.account_id}</div>
                         </div>
-                        <span className="font-mono text-text-primary">{parseFloat(b.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 7})}</span>
+                        <div className="flex justify-between">
+                          <div className="text-xs text-text-secondary">Sequence Number</div>
+                          <div className="font-mono text-sm text-text-primary">{resultData.sequence}</div>
+                        </div>
+                        <div className="flex justify-between">
+                          <div className="text-xs text-text-secondary">Subentry Count</div>
+                          <div className="font-mono text-sm text-text-primary">{resultData.subentry_count}</div>
+                        </div>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="bg-surface border border-border rounded-xl p-5">
+                      <h3 className="text-sm font-medium text-text-secondary mb-4">Balances</h3>
+                      <div className="space-y-3">
+                        {resultData.balances.map((b: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center bg-background border border-border/50 p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${b.asset_type === 'native' ? 'bg-primary' : 'bg-teal-400'}`} />
+                              <span className="font-medium text-text-primary text-sm">
+                                {b.asset_type === 'native' ? 'XLM' : b.asset_code}
+                              </span>
+                            </div>
+                            <span className="font-mono text-text-primary">{parseFloat(b.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 7})}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-surface border border-border rounded-xl p-5">
+                    <h3 className="text-sm font-medium text-text-secondary mb-4 flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Transaction Details
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-xs text-text-secondary mb-1">Hash</div>
+                        <div className="font-mono text-sm text-text-primary break-all bg-background border border-border/50 p-2 rounded">{resultData.hash}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-text-secondary mb-1">Source Account</div>
+                        <div className="font-mono text-sm text-text-primary break-all bg-background border border-border/50 p-2 rounded">{resultData.source_account}</div>
+                      </div>
+                      <div className="flex justify-between">
+                        <div className="text-xs text-text-secondary">Ledger</div>
+                        <div className="font-mono text-sm text-text-primary">{resultData.ledger}</div>
+                      </div>
+                      <div className="flex justify-between">
+                        <div className="text-xs text-text-secondary">Fee Paid</div>
+                        <div className="font-mono text-sm text-text-primary">{resultData.fee_charged} stroops</div>
+                      </div>
+                      <div className="flex justify-between">
+                        <div className="text-xs text-text-secondary">Status</div>
+                        <div className="font-mono text-sm text-text-primary">
+                          {resultData.successful ? (
+                            <span className="text-teal-400">Success</span>
+                          ) : (
+                            <span className="text-red-400">Failed</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="lg:col-span-2">
@@ -170,7 +230,7 @@ export function Explorer() {
                   <div className="px-5 py-4 border-b border-border bg-background/50 flex items-center justify-between">
                     <h3 className="text-sm font-medium text-text-primary flex items-center gap-2">
                       <Activity className="w-4 h-4 text-primary" />
-                      Recent Operations
+                      {searchType === 'account' ? 'Recent Operations' : 'Included Operations'}
                     </h3>
                   </div>
                   
@@ -216,7 +276,7 @@ export function Explorer() {
           ) : (
             <div className="bg-[#0B1220] border border-border rounded-xl p-5 overflow-x-auto shadow-inner">
               <pre className="text-xs font-mono text-[#E8EAED] whitespace-pre-wrap break-all">
-                {JSON.stringify(accountData, null, 2)}
+                {JSON.stringify(resultData, null, 2)}
               </pre>
             </div>
           )}
