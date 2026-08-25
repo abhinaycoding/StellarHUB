@@ -155,6 +155,20 @@ Token Contract: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC (Testne
 Leaderboard Contract: CAB7UAM35DVIJTD2ZWAMAHKMXWKC2MRO2PPOLDRLMDSGOBT4PO34TTRY
 Contract Call Transaction: 046de9186cb6f7cd78a788a904444a217a6ac2401d8e91a665b74b7d8430fabb
 
+### Address Book (`AddressBook.tsx`)
+
+Manage your saved Stellar addresses locally.
+- **Add, Edit, and Delete** — Easily keep track of frequently used Stellar addresses.
+- **Address Validation** — Ensures that only valid Stellar addresses can be saved.
+- **Quick Copy** — One-click copying for frictionless interactions.
+
+### Asset Faucet (`Faucet.tsx`)
+
+A developer tool to drip custom tokens directly to the connected wallet.
+- **Testnet/Futurenet Only** — Safeguarded to prevent accidental mainnet execution.
+- **Custom Asset Support** — Specify the custom asset code and drip amount.
+- **Local Key Management** — Uses the Issuer Secret Key locally to sign payment transactions without exposing it to any server.
+
 ## Transaction Lifecycle
 
 ```mermaid
@@ -224,14 +238,18 @@ The project overrides Tailwind defaults with a custom CSS variable layer (`index
 ```
 stellarhub/
 ├─ src/
-│  ├─ context/
+│  ├─ contexts/
 │  │  ├─ WalletContext.tsx      # wallet state, Freighter integration, network guard
-│  │  └─ ThemeContext.tsx       # dark/light theming
+│  │  ├─ ThemeContext.tsx       # dark/light theming
+│  │  ├─ AddressBookContext.tsx # local storage for saved addresses
+│  │  └─ SettingsContext.tsx    # user settings like preferred network
 │  ├─ services/
 │  │  └─ stellar.ts             # Horizon queries, trustlines, tx building
 │  ├─ pages/
 │  │  ├─ Dashboard.tsx          # ledger strip, live log, portfolio chart
-│  │  └─ Swap.tsx               # path payments, path visualizer
+│  │  ├─ Swap.tsx               # path payments, path visualizer
+│  │  ├─ AddressBook.tsx        # manage saved Stellar addresses
+│  │  └─ Faucet.tsx             # tool to drip custom tokens
 │  ├─ components/
 │  │  ├─ LedgerStrip.tsx
 │  │  ├─ LiveNetworkLog.tsx
