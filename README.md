@@ -346,4 +346,4 @@ Issues and PRs are welcome. Please keep new UI work aligned with the existing de
 
 ## License
 
-TBD — add a license file appropriate to your project (e.g. MIT).
+TBD — add a license file appropriate to your project (e.g. MIT). 
