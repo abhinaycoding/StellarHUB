@@ -1,6 +1,6 @@
 import { getNetworkDetails, signTransaction } from '@stellar/freighter-api';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import type { Holder } from '../types/leaderboard';
+import type { Holder, ContractEvent } from '../types/leaderboard';
 import { ErrorCode, StellarError } from '../utils/stellarErrors';
 
 const RPC_URL = import.meta.env.VITE_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
@@ -142,37 +142,87 @@ export const callLeaderboardContract = async (
 };
 
 export const subscribeToTokenEvents = (
-  _contractId: string,
-  onEvent: (event: any) => void,
-  _onError: (error: any) => void
+  contractId: string,
+  onEvent: (event: ContractEvent) => void,
+  onError: (error: any) => void
 ): (() => void) => {
-  // Stellar SDK rpc.Server doesn't have a direct event subscription yet.
-  // We'll simulate live events for the UI.
   let isSubscribed = true;
-  
-  const emitMockEvent = () => {
+  let currentLedger = 0;
+  let pollTimeout: any;
+
+  const pollEvents = async () => {
     if (!isSubscribed) return;
-    
-    const demoHolders = generateDemoHolders();
-    const randomHolder = demoHolders[Math.floor(Math.random() * demoHolders.length)];
-    const amountChange = Math.floor(Math.random() * 1000) - 200; // random change
-    
-    onEvent({
-      id: Math.random().toString(36).substring(7),
-      type: 'holder_updated',
-      address: randomHolder.address,
-      amountChange,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Schedule next event
-    setTimeout(emitMockEvent, Math.random() * 8000 + 4000);
+
+    try {
+      if (currentLedger === 0) {
+        // Initialize start ledger
+        const latestLedgerResp = await rpcServer.getLatestLedger();
+        currentLedger = latestLedgerResp.sequence;
+      }
+
+      const request: any = {
+        startLedger: currentLedger,
+        filters: [
+          {
+            type: "contract",
+            contractIds: [contractId],
+          }
+        ],
+        pagination: { limit: 100 }
+      };
+
+      const response = await rpcServer.getEvents(request);
+
+      if (response.events && response.events.length > 0) {
+        response.events.forEach((evt) => {
+          try {
+            // Assume standard SAC transfer event format: ["transfer", from, to] and value is amount
+            const topic1 = evt.topic.length > 0 ? StellarSdk.scValToNative(evt.topic[0]) : '';
+            
+            if (topic1 === 'transfer' && evt.topic.length >= 3) {
+              const toAddress = StellarSdk.scValToNative(evt.topic[2]);
+              const amount = StellarSdk.scValToNative(evt.value);
+              
+              onEvent({
+                id: evt.id,
+                type: 'transfer',
+                address: typeof toAddress === 'string' ? toAddress : contractId,
+                amountChange: Number(amount) / 10000000, // assuming 7 decimal places for Stellar assets
+                timestamp: evt.ledgerClosedAt || new Date().toISOString()
+              });
+            } else {
+              // Fallback for other events
+              onEvent({
+                id: evt.id,
+                type: String(topic1) || 'unknown',
+                address: contractId,
+                amountChange: 0,
+                timestamp: evt.ledgerClosedAt || new Date().toISOString()
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse event", e, evt);
+          }
+        });
+      }
+
+      currentLedger = response.latestLedger;
+      
+      if (isSubscribed) {
+        pollTimeout = setTimeout(pollEvents, 5000);
+      }
+    } catch (error) {
+      onError(error);
+      if (isSubscribed) {
+        pollTimeout = setTimeout(pollEvents, 10000); // Backoff on error
+      }
+    }
   };
-  
-  // Start emitting after a delay
-  setTimeout(emitMockEvent, 5000);
-  
+
+  pollEvents();
+
   return () => {
     isSubscribed = false;
+    clearTimeout(pollTimeout as any);
   };
 };
