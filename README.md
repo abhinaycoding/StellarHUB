@@ -254,7 +254,9 @@ stellarhub/
 │  │  ├─ LedgerStrip.tsx
 │  │  ├─ LiveNetworkLog.tsx
 │  │  ├─ PortfolioChart.tsx
-│  │  └─ PathVisualizer.tsx
+│  │  ├─ PathVisualizer.tsx
+│  │  └─ leaderboard/
+│  │     └─ TopHolders.tsx
 │  ├─ index.css                 # design tokens, radius/focus overrides
 │  └─ main.tsx
 ├─ scripts/
@@ -346,4 +348,4 @@ Issues and PRs are welcome. Please keep new UI work aligned with the existing de
 
 ## License
 
-TBD — add a license file appropriate to your project (e.g. MIT). 
+This project is licensed under the MIT License.
